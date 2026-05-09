@@ -45,6 +45,76 @@ type DiagnoseRequest struct {
 	Symptoms []string       `json:"symptoms"`
 }
 
+// UnmarshalJSON supports both the current shape
+//
+//	{ "water": { ... }, "symptoms": [...] }
+//
+// and a legacy/flat shape where water fields are provided at the top-level:
+//
+//	{ "co2_mg_l": 30, ... }
+//
+// This is strictly input compatibility only; the API response stays unchanged.
+func (r *DiagnoseRequest) UnmarshalJSON(data []byte) error {
+	type raw DiagnoseRequest
+	aux := struct {
+		raw
+
+		// Flat water fields (aliases for Water.* when Water.* is nil)
+		PH                  *float64 `json:"ph"`
+		KhDKH               *float64 `json:"kh_dkh"`
+		GhDGH               *float64 `json:"gh_dgh"`
+		TempC               *float64 `json:"temp_c"`
+		NitriteMgL          *float64 `json:"nitrite_mg_l"`
+		NitrateMgL          *float64 `json:"nitrate_mg_l"`
+		AmmoniumMgL         *float64 `json:"ammonium_mg_l"`
+		OxygenMgL           *float64 `json:"oxygen_mg_l"`
+		OxygenSaturationPct *float64 `json:"oxygen_saturation_pct"`
+		CO2MgL              *float64 `json:"co2_mg_l"`
+		Notes               *string  `json:"notes"`
+	}{}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*r = DiagnoseRequest(aux.raw)
+
+	// Merge flat aliases into nested water object when absent.
+	if r.Water.PH == nil {
+		r.Water.PH = aux.PH
+	}
+	if r.Water.KhDKH == nil {
+		r.Water.KhDKH = aux.KhDKH
+	}
+	if r.Water.GhDGH == nil {
+		r.Water.GhDGH = aux.GhDGH
+	}
+	if r.Water.TempC == nil {
+		r.Water.TempC = aux.TempC
+	}
+	if r.Water.NitriteMgL == nil {
+		r.Water.NitriteMgL = aux.NitriteMgL
+	}
+	if r.Water.NitrateMgL == nil {
+		r.Water.NitrateMgL = aux.NitrateMgL
+	}
+	if r.Water.AmmoniumMgL == nil {
+		r.Water.AmmoniumMgL = aux.AmmoniumMgL
+	}
+	if r.Water.OxygenMgL == nil {
+		r.Water.OxygenMgL = aux.OxygenMgL
+	}
+	if r.Water.OxygenSaturationPct == nil {
+		r.Water.OxygenSaturationPct = aux.OxygenSaturationPct
+	}
+	if r.Water.CO2MgL == nil {
+		r.Water.CO2MgL = aux.CO2MgL
+	}
+	if r.Water.Notes == nil {
+		r.Water.Notes = aux.Notes
+	}
+	return nil
+}
+
 // InlineTank is used to create a tank within a diagnose call.
 type InlineTank struct {
 	Name         string  `json:"name"`
@@ -185,6 +255,10 @@ type DiagnoseAPIResponse struct {
 	Diagnoses    []DiagnosisItem `json:"diagnoses"`
 	MatchedRules []string        `json:"matched_rules"`
 
+	// AIExplanation is optional. When AI is disabled or failed, it is null and
+	// the deterministic diagnosis fields remain the source of truth.
+	AIExplanation *AIExplanation `json:"ai_explanation"`
+
 	Meta DiagnosisMeta `json:"meta"`
 }
 
@@ -194,6 +268,14 @@ type DiagnosisMeta struct {
 	EvaluatedRules    int    `json:"evaluated_rules"`
 	MatchedCount      int    `json:"matched_count"`
 	GeneratedAt       string `json:"generated_at"`
+
+	// AIStatus describes if an AI explanation was attempted.
+	// Values: "disabled" | "ok" | "failed"
+	AIStatus string `json:"ai_status"`
+
+	// AIErrorCode is a development-only, normalized error indicator for AI failures.
+	// It is intentionally omitted in production.
+	AIErrorCode *string `json:"ai_error_code,omitempty"`
 
 	// Persistence references for the produced diagnosis. Kept inside meta so the
 	// top-level response shape stays exactly as documented.
@@ -207,9 +289,10 @@ type DiagnosisMeta struct {
 func BuildDiagnoseResponse(matches []RuleMatch, meta DiagnosisMeta) DiagnoseAPIResponse {
 	meta.MatchedCount = len(matches)
 	out := DiagnoseAPIResponse{
-		Diagnoses:    make([]DiagnosisItem, 0, len(matches)),
-		MatchedRules: make([]string, 0, len(matches)),
-		Meta:         meta,
+		Diagnoses:     make([]DiagnosisItem, 0, len(matches)),
+		MatchedRules:  make([]string, 0, len(matches)),
+		AIExplanation: nil,
+		Meta:          meta,
 	}
 	if len(matches) == 0 {
 		out.Status = StatusUnknown
@@ -246,4 +329,16 @@ type Explanation struct {
 	SafetyNote        string   `json:"safety_note"`
 
 	Source string `json:"source"` // "deterministic" | "ai"
+}
+
+// AIExplanation is the optional explanation layer returned by the AI service.
+// It must never change or override any deterministic diagnosis fields.
+type AIExplanation struct {
+	Summary           string   `json:"summary"`
+	ReasoningPublic   string   `json:"reasoning_public"`
+	ActionsNow        []string `json:"actions_now"`
+	ActionsOptional   []string `json:"actions_optional"`
+	Avoid             []string `json:"avoid"`
+	FollowUpQuestions []string `json:"follow_up_questions"`
+	SafetyNote        string   `json:"safety_note"`
 }

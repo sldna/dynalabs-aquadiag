@@ -21,15 +21,15 @@ import (
 type Service struct {
 	db    *sql.DB
 	rules rules.Ruleset
-	ai    ai.Config
+	ai    *ai.Service
 
 	// now ist injizierbar, damit Tests einen festen RFC3339-Zeitstempel prüfen können.
 	now func() time.Time
 }
 
 // NewService baut den Diagnose-Service.
-func NewService(database *sql.DB, rs rules.Ruleset, cfg ai.Config) *Service {
-	return &Service{db: database, rules: rs, ai: cfg, now: time.Now}
+func NewService(database *sql.DB, rs rules.Ruleset, aiSvc *ai.Service) *Service {
+	return &Service{db: database, rules: rs, ai: aiSvc, now: time.Now}
 }
 
 // Diagnose validiert, speichert Wasserwerte, wertet Regeln aus und persistiert das Ergebnis.
@@ -86,7 +86,23 @@ func (s *Service) Diagnose(ctx context.Context, req models.DiagnoseRequest) (mod
 		}
 	}
 
-	ex := ai.BuildExplanation(s.ai, primary)
+	ex := ai.BuildDeterministicExplanation(primary)
+	aiStatus := "disabled"
+	var aiExplanation *models.AIExplanation
+	var aiErrorCode *string
+	if s.ai != nil && s.ai.Enabled() {
+		aiStatus = "failed"
+		if ex2, err := s.ai.Explain(ctx, primary, matches, matchedIDs); err == nil {
+			aiExplanation = ex2
+			aiStatus = "ok"
+		} else if s.ai.IsDevelopment() {
+			c := string(ai.ErrorCodeFrom(err))
+			aiErrorCode = &c
+		}
+	} else if s.ai != nil && s.ai.IsDevelopment() {
+		c := string(ai.ErrorCodeDisabled)
+		aiErrorCode = &c
+	}
 
 	row, err := diagnosisRowFrom(waterTestID, primary, matchedIDs, runnerUp, ex)
 	if err != nil {
@@ -105,11 +121,15 @@ func (s *Service) Diagnose(ctx context.Context, req models.DiagnoseRequest) (mod
 		RuleEngineVersion: strconv.Itoa(s.rules.Version),
 		EvaluatedRules:    s.rules.EvaluatedCount(),
 		GeneratedAt:       s.now().UTC().Format(time.RFC3339),
+		AIStatus:          aiStatus,
+		AIErrorCode:       aiErrorCode,
 		DiagnosisID:       diagID,
 		WaterTestID:       waterTestID,
 		TankID:            tankID,
 	}
-	return models.BuildDiagnoseResponse(matches, meta), nil
+	resp := models.BuildDiagnoseResponse(matches, meta)
+	resp.AIExplanation = aiExplanation
+	return resp, nil
 }
 
 func validateDiagnoseRequest(req models.DiagnoseRequest) error {

@@ -62,7 +62,9 @@ Kopieren: `cp .env.example .env` und bei Bedarf anpassen.
 - `BACKEND_PORT` – API-Port (Standard `8080`)
 - `FRONTEND_PORT` – Web-UI-Port (Standard `3000`)
 - `DATABASE_PATH` – Pfad zur SQLite-Datei (im Container unter `/data/…`; Volume `aquadiag-data`)
-- `AI_*` – optional; ohne Key bleibt die KI deaktiviert. Bei `AI_ENABLED=false` (Standard) liefert die API **deterministische** Regel-Erklärungen aus der YAML (keine externe KI).
+- `AI_*` – optional; ohne Key bleibt die KI deaktiviert. Bei `AI_ENABLED=false` (Standard) liefert die API **nur** die deterministischen Regeltexte; `ai_explanation` bleibt `null`.
+  - `AI_BASE_URL` erwartet eine **vollständige Chat-Completions-Endpoint-URL** (OpenAI-kompatibles Schema).
+  - `AI_TIMEOUT_SECONDS` begrenzt nur den AI-Aufruf (Fallback ohne AI bei Timeout/Fehler).
 - `RULES_PATH` – optional; Pfad zur Regel-Datei. Ohne Angabe: automatisch `rules/aquarium-rules.yaml` (Arbeitsverzeichnis **Repo-Root**) oder `../rules/aquarium-rules.yaml` (wenn das Backend aus `backend/` gestartet wird); im Container-Image `/app/rules/aquarium-rules.yaml`.
 - `CORS_ALLOWED_ORIGINS` – erlaubte Browser-Origins für die API (Standard in Compose abgeleitet von `FRONTEND_PORT`)
 - `NEXT_PUBLIC_API_BASE_URL` – Basis-URL der API **vom Browser aus** (`http://localhost:8080`, wenn Ports auf den Host gemappt sind)
@@ -99,6 +101,7 @@ docker compose up --build
   - `GET /v1/water-tests/{id}` → eine Messung inkl. `symptoms` (aus `symptoms_json`)
   - `DELETE /v1/water-tests/{id}` → `204`, entfernt zugehörige `diagnosis_results`, dann die Messzeile (Transaktion; zusätzlich FK `ON DELETE CASCADE` ab Migration `006_foreign_keys_on_delete_cascade.sql`)
 - Diagnose: `POST …/v1/diagnose` mit Tank-Bezug und optionalem `water`: **Härte** `kh_dkh` (°dKH), `gh_dgh` (°dGH); **Ionen** `nitrite_mg_l`, `nitrate_mg_l`, `ammonium_mg_l`, `co2_mg_l` (mg/l, Testkits); **O₂** `oxygen_mg_l` (mg/l). Alte Schlüssel `*_ppm` werden beim Einlesen noch akzeptiert.
+  - Optionaler Explainability-Layer: `ai_explanation` ist entweder ein JSON-Objekt oder `null`. Status unter `meta.ai_status`: `"disabled" | "ok" | "failed"`. Die deterministische Diagnose bleibt immer maßgeblich.
 - Web-UI: nach `/dashboard` verlinkt **Start**, **Becken** (`/dashboard/tanks`), **Diagnose** (`/dashboard/diagnose`).
 
 #### Strukturierte API-Fehler
@@ -271,4 +274,4 @@ Das Hosting von AquaDiag als kommerzielles SaaS-Angebot oder als Bestandteil ein
 ## Bekannte Einschränkungen V1
 
 - Backend: **`GET /health`**, Becken-REST unter **`/v1/tanks`** (inkl. `PUT`/`DELETE`; Listenantwort mit schlanker letzter-Messung-/letzter-Diagnose-Summary), Wassertests **`GET /v1/tanks/{id}/water-tests`**, **`GET/DELETE /v1/water-tests/{id}`**, **`POST /v1/diagnose`**, SQLite (`tanks`, `water_tests`, `diagnosis_results`), Regeln unter **`rules/`**. Frontend: Dashboard mit **Dynalabs AquaDiag v1**-Branding (Logo im Header, Claim im Footer), Navigation zu **Becken** und **Diagnose**; Becken-Liste (`/dashboard/tanks`) zeigt Karten mit letzter Messung und, falls vorhanden, kompakter letzter Diagnose, Detail-Seite (`/dashboard/tanks/{id}`) bietet Bearbeiten, Löschen mit Bestätigungsdialog und „Neue Diagnose / Messung“ (mit vorausgewähltem Becken via `?tank=ID`). Lade-, Leer- und Fehlerzustände sind in den Server-Komponenten behandelt; nach erfolgreichem Löschen leitet das UI auf `/dashboard/tanks?deleted=...` mit kurzlebigem Erfolgs-Banner um.
-- KI-Erklärung: Umgebung `AI_*` ist vorbereitet; die aktuelle Referenzimplementierung nutzt **deterministische** Texte aus der Regeldatei, sobald keine KI angebunden ist bzw. `AI_ENABLED=false`.
+- KI-Erklärung: optionaler Explainability-Layer über `AI_*`. Bei `AI_ENABLED=false` bleibt `ai_explanation=null` und das UI funktioniert unverändert; bei Fehler/Timeout gilt `meta.ai_status="failed"` ohne Diagnose-Abbruch.

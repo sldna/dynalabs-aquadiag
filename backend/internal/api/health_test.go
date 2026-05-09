@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -119,7 +120,7 @@ func TestDiagnose_MatchedResponse_NitriteRule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	svc := diagnosis.NewService(sqlDB, rs, ai.ConfigFromEnv())
+	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
 	srv := NewServer(sqlDB, svc)
 
 	nitrite := 0.5
@@ -190,7 +191,7 @@ func TestDiagnose_CO2MgL_MatchesCo2PhKhRiskV1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	svc := diagnosis.NewService(sqlDB, rs, ai.ConfigFromEnv())
+	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
 	srv := NewServer(sqlDB, svc)
 
 	body, _ := json.Marshal(map[string]any{
@@ -230,6 +231,253 @@ func TestDiagnose_CO2MgL_MatchesCo2PhKhRiskV1(t *testing.T) {
 	assertStableMeta(t, resp.Meta, 1)
 }
 
+func TestDiagnose_FlatCO2MgL_Gte30_MatchesCo2PhKhRiskV1(t *testing.T) {
+	t.Setenv("AI_ENABLED", "false")
+
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "co2-flat.db")
+
+	sqlDB, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+
+	if err := db.Migrate(sqlDB); err != nil {
+		t.Fatal(err)
+	}
+
+	rs, err := rules.LoadFile(testRulesFile(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
+	srv := NewServer(sqlDB, svc)
+
+	// Create a tank and reference it via tank_id (flat water input at top-level).
+	tx, err := sqlDB.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	tankID, err := db.InsertTank(context.Background(), tx, "Flat CO2", 120)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"tank_id":  tankID,
+		"co2_mg_l": 30.0,
+		"symptoms": []string{},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/diagnose", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	srv.handleDiagnose(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	assertResponseSchema(t, rec.Body.Bytes())
+
+	var resp models.DiagnoseAPIResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Status != models.StatusMatched {
+		t.Fatalf("status=%q", resp.Status)
+	}
+	if len(resp.Diagnoses) == 0 {
+		t.Fatalf("diagnoses=%v", resp.Diagnoses)
+	}
+	if resp.TopDiagnosis == nil || resp.TopDiagnosis.RuleID != "co2_ph_kh_risk_v1" {
+		t.Fatalf("top_diagnosis=%+v diagnoses=%v", resp.TopDiagnosis, resp.Diagnoses)
+	}
+}
+
+func TestDiagnose_FlatCO2MgL_29_9_DoesNotMatchCo2PhKhRiskV1(t *testing.T) {
+	t.Setenv("AI_ENABLED", "false")
+
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "co2-flat-29_9.db")
+
+	sqlDB, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+
+	if err := db.Migrate(sqlDB); err != nil {
+		t.Fatal(err)
+	}
+
+	rs, err := rules.LoadFile(testRulesFile(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
+	srv := NewServer(sqlDB, svc)
+
+	tx, err := sqlDB.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	tankID, err := db.InsertTank(context.Background(), tx, "Flat CO2 29.9", 120)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"tank_id":  tankID,
+		"co2_mg_l": 29.9,
+		"symptoms": []string{},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/diagnose", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	srv.handleDiagnose(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	assertResponseSchema(t, rec.Body.Bytes())
+
+	var resp models.DiagnoseAPIResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+
+	// Regardless of overall status, ensure this specific rule did not match.
+	for _, d := range resp.Diagnoses {
+		if d.RuleID == "co2_ph_kh_risk_v1" {
+			t.Fatalf("co2_ph_kh_risk_v1 must not match for 29.9, diagnoses=%v", resp.Diagnoses)
+		}
+	}
+}
+
+func TestDiagnose_AIErrorCode_DevelopmentIncluded(t *testing.T) {
+	t.Setenv("APP_ENV", "development")
+	t.Setenv("AI_ENABLED", "true")
+	t.Setenv("AI_API_KEY", "") // force missing_api_key
+
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "ai-err-dev.db")
+
+	sqlDB, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+
+	if err := db.Migrate(sqlDB); err != nil {
+		t.Fatal(err)
+	}
+
+	rs, err := rules.LoadFile(testRulesFile(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
+	srv := NewServer(sqlDB, svc)
+
+	body, _ := json.Marshal(map[string]any{
+		"tank":     map[string]any{"name": "AI Dev", "volume_liters": 80},
+		"water":    map[string]any{"co2_mg_l": 30.0},
+		"symptoms": []string{},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/diagnose", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	srv.handleDiagnose(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatal(err)
+	}
+	meta, _ := raw["meta"].(map[string]any)
+	if meta == nil {
+		t.Fatalf("missing meta: %s", rec.Body.String())
+	}
+	if meta["ai_error_code"] != "missing_api_key" {
+		t.Fatalf("ai_error_code=%v", meta["ai_error_code"])
+	}
+}
+
+func TestDiagnose_AIErrorCode_ProductionHidden(t *testing.T) {
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("AI_ENABLED", "true")
+	t.Setenv("AI_API_KEY", "") // force missing_api_key, but should be hidden in prod
+
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "ai-err-prod.db")
+
+	sqlDB, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+
+	if err := db.Migrate(sqlDB); err != nil {
+		t.Fatal(err)
+	}
+
+	rs, err := rules.LoadFile(testRulesFile(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
+	srv := NewServer(sqlDB, svc)
+
+	body, _ := json.Marshal(map[string]any{
+		"tank":     map[string]any{"name": "AI Prod", "volume_liters": 80},
+		"water":    map[string]any{"co2_mg_l": 30.0},
+		"symptoms": []string{},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/diagnose", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	srv.handleDiagnose(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatal(err)
+	}
+	meta, _ := raw["meta"].(map[string]any)
+	if meta == nil {
+		t.Fatalf("missing meta: %s", rec.Body.String())
+	}
+	if _, ok := meta["ai_error_code"]; ok {
+		t.Fatalf("ai_error_code must be omitted in production, meta=%v", meta)
+	}
+}
+
 func TestDiagnose_MultipleMatches_CO2AndMilkyWater_TopHigherConfidence(t *testing.T) {
 	t.Setenv("AI_ENABLED", "false")
 
@@ -251,7 +499,7 @@ func TestDiagnose_MultipleMatches_CO2AndMilkyWater_TopHigherConfidence(t *testin
 		t.Fatal(err)
 	}
 
-	svc := diagnosis.NewService(sqlDB, rs, ai.ConfigFromEnv())
+	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
 	srv := NewServer(sqlDB, svc)
 
 	body, _ := json.Marshal(map[string]any{
@@ -325,7 +573,7 @@ func TestDiagnose_UnknownResponse_NoRuleMatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	svc := diagnosis.NewService(sqlDB, rs, ai.ConfigFromEnv())
+	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
 	srv := NewServer(sqlDB, svc)
 
 	note := "nur Notiz"
@@ -408,7 +656,7 @@ func TestDiagnose_ValidationFailed_StructuredJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	svc := diagnosis.NewService(sqlDB, rs, ai.ConfigFromEnv())
+	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
 	srv := NewServer(sqlDB, svc)
 
 	body := []byte(`{"water":{"ph":7.0},"symptoms":[]}`)
@@ -456,7 +704,7 @@ func TestDiagnose_InvalidJSON_StructuredError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	svc := diagnosis.NewService(sqlDB, rs, ai.ConfigFromEnv())
+	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
 	srv := NewServer(sqlDB, svc)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/diagnose", bytes.NewReader([]byte(`{"water":`)))

@@ -110,6 +110,7 @@ export function DiagnosisResult({
   if (!top) return <DiagnosisResultUnknown onRetry={onRetry} />;
 
   const additional = withoutTop(diagnoses, top);
+  const aiExplanation = "ai_explanation" in result ? result.ai_explanation : null;
 
   return (
     <div className="space-y-6">
@@ -123,6 +124,35 @@ export function DiagnosisResult({
 
         {/* D. Nicht tun */}
         <AvoidList items={top.avoid} />
+
+        {/* E. AI explanation (optional) */}
+        {aiExplanation ? (
+          <section className="rounded-card bg-white p-4 ring-1 ring-aqua-deep/10">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-aqua-deep">AI-Erklärung</h3>
+              <span className="rounded-full bg-aqua-soft px-2 py-0.5 text-xs font-medium text-aqua-deep/80">
+                optional
+              </span>
+            </div>
+
+            {aiExplanation.summary?.trim() ? (
+              <p className="mt-3 text-sm text-aqua-deep/85">
+                {aiExplanation.summary}
+              </p>
+            ) : null}
+            {aiExplanation.reasoning_public?.trim() ? (
+              <p className="mt-3 whitespace-pre-wrap text-sm text-aqua-deep/85">
+                {aiExplanation.reasoning_public}
+              </p>
+            ) : null}
+            {aiExplanation.safety_note?.trim() ? (
+              <p className="mt-3 text-sm text-aqua-deep/85">
+                <span className="font-semibold">Hinweis:</span>{" "}
+                {aiExplanation.safety_note}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
 
         {/* F. Expandable explanation */}
         <details className="rounded-card bg-aqua-soft p-4 ring-1 ring-aqua-deep/10">

@@ -1,0 +1,34 @@
+---
+alwaysApply: true
+---
+
+# Git Workflow Rules
+
+Every new feature, refactor, or bugfix must start on a dedicated git branch.
+
+Never implement feature work directly on:
+- main
+- master
+- develop
+
+Before changing files:
+1. Check current branch.
+2. Check git status.
+3. If on main/master/develop, create a feature branch.
+4. Use descriptive branch names.
+
+Branch naming:
+- feature/ai-explanation-layer
+- feature/tank-management
+- fix/diagnosis-multi-match
+- refactor/rule-evaluator
+
+For the AI explanation layer, use:
+feature/ai-explanation-layer
+
+Before finishing:
+1. Run tests.
+2. Run formatting.
+3. Show changed files.
+4. Suggest a commit message.
+5. Do not merge automatically.
