@@ -1,0 +1,47 @@
+---
+globs:
+  - "backend/**/*.go"
+---
+
+# Go Backend Rules
+
+Use idiomatic Go.
+
+Backend structure:
+- cmd/api/main.go for startup
+- internal/api for handlers and routing
+- internal/models for structs
+- internal/db for database access
+- internal/diagnosis for orchestration
+- internal/rules for rule engine
+- internal/ai for AI explanation service
+
+Rules:
+- Keep handlers thin.
+- Put business logic in services.
+- Return structured JSON errors.
+- Validate all input.
+- Use context.Context where appropriate.
+- Avoid global mutable state except loaded static rules.
+- Do not introduce heavy frameworks unless necessary.
+- Prefer standard library plus small focused dependencies.
+
+API style:
+- REST
+- JSON
+- versioned routes under /v1
+
+Required endpoints:
+- GET /health
+- POST /v1/tanks
+- GET /v1/tanks
+- POST /v1/diagnose
+- GET /v1/diagnoses/{id}
+
+Diagnosis flow:
+1. validate request
+2. persist water test
+3. evaluate YAML rules
+4. call AI explanation only if configured
+5. persist diagnosis result
+6. return structured response

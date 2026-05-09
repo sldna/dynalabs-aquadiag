@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --color-aqua-deep: #0f4c5c;
+  --color-aqua-blue: #1ca7c9;
+  --color-aqua-mint: #52d6c6;
+  --color-deep-navy: #082f3a;
+  --color-soft-water: #e8f8fb;
+  --color-sand-neutral: #f4efe7;
+  --color-success: #2fbf71;
+  --color-warning: #f2c94c;
+  --color-alert: #f2994a;
+  --color-critical: #eb5757;
+  --color-info: #2d9cdb;
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --shadow-card: 0 8px 24px rgba(8, 47, 58, 0.08);
+}
+
+body {
+  @apply min-h-dvh bg-aqua-soft font-sans text-aqua-deep antialiased;
+}

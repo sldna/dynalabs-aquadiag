@@ -1,0 +1,48 @@
+---
+globs:
+  - "frontend/**/*.tsx"
+  - "frontend/**/*.ts"
+---
+
+# Frontend Rules
+
+Use Next.js with TypeScript and Tailwind.
+
+UX principles:
+- mobile-first
+- symptoms first
+- water values optional
+- one primary action per screen
+- diagnosis result must be action-first
+
+Do not build complex navigation in V1.
+
+Required screens:
+- Dashboard
+- Create tank
+- Diagnose input
+- Diagnosis result
+
+Component naming:
+- StatusCard
+- SymptomSelector
+- WaterValueForm
+- DiagnosisCard
+- ActionList
+- AvoidList
+- FollowUpQuestions
+
+Diagnosis result layout:
+1. severity/status
+2. most likely diagnosis
+3. confidence
+4. "Jetzt tun"
+5. "Optional"
+6. "Vermeiden"
+7. explanation collapsible
+
+Avoid:
+- dense tables
+- scientific text before user action
+- desktop-first layouts
+- unnecessary charts in V1

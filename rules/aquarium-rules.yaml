@@ -1,0 +1,175 @@
+version: 1
+rules:
+  - id: nitrite_risk_v1
+    name: Nitritbelastung
+    diagnosis_type: nitrite_risk
+    severity: high
+    confidence: 0.9
+    summary_de: >-
+      Die Messung zeigt Nitrit – das ist für Fische belastend und sollte zeitnah gesenkt werden.
+    reasoning_de: >-
+      Nitrit entsteht beim Abbau von Ammonium und ist giftig. Typische Ursachen sind
+      unzureichend gereifter Filter, Überbesatz, Überfütterung oder frische Einrichtung.
+    follow_up_questions_de:
+      - "Ist das Aquarium frisch eingerichtet oder kürzlich stark umgebaut worden?"
+      - "Wie stark ist besetzt (Fischbestand/Liter)?"
+    safety_note_de: >-
+      Das ist keine ärztliche Diagnose. Bei sichtbar kranken Tieren oder bei sehr hohen Werten
+      konsultieren Sie zusätzlich eine fachkundige Anlaufstelle.
+    when:
+      any:
+        - field: nitrite_mg_l
+          gte: 0.25
+    actions_now:
+      - "Nicht weiter füttern oder Fütterung für 24 Stunden stark reduzieren."
+      - "Teilwasser wechseln (z. B. 20–30 %) und Bodengrund/Filter vorsichtig reinigen."
+      - "Filtermedium nicht komplett austauschen; Bakterienpopulation schonen."
+    actions_optional:
+      - "Nitrit und Ammonium in den nächsten Tagen erneut messen."
+      - "Temporär Luftpumpen-/Oberflächenbewegung erhöhen, um Gaswechsel zu verbessern."
+    avoid:
+      - "Keine großen Total-Reinigungen ohne Not und keine vollständige Filtersterilisation."
+    facts:
+      - "Nitrit ist ein zentraler Wert beim Einfahren und nach Störungen der Biofiltration."
+
+  - id: bacterial_bloom_v1
+    name: Trübung / Bakterienblüte (verdächtig)
+    diagnosis_type: bacterial_bloom
+    severity: medium
+    confidence: 0.72
+    summary_de: >-
+      Sichtbare Trübung passt häufig zu einer Bakterienblüte – oft nach Überfütterung, organischen
+      Einträgen oder stark geschwankter Biofiltration.
+    reasoning_de: >-
+      Trüb-milchige Optik ohne „Grün“ kann auf viele frei schwebende Bakterien hindeuten.
+      Parallel sollten Ammonium/Nitrit kontrolliert werden.
+    follow_up_questions_de:
+      - "Traten Fischverluste oder Fressunlust auf?"
+      - "Gibt es frisch eingeklebte Wurzeln, viel Welkfutter oder starke Mulmablagerungen?"
+    safety_note_de: >-
+      Ursachen sind vielfältig. Wiederholtes Messen und vorsichtiges Eingreifen ist meist besser als Schockmaßnahmen.
+    when:
+      any:
+        - all:
+            - field: symptoms
+              contains_any: [cloudy_water, milky_water, white_haze]
+        - all:
+            - field: symptoms
+              contains_any: [bacterial_bloom]
+    actions_now:
+      - "Fütterung für 24–48 Stunden reduzieren und nur sehr sparsam weiterfüttern."
+      - "Teilwasser wechseln; sichtbare Futterreste und Mulm vorsichtig entfernen."
+      - "Filter nur bei deutlich reduziertem Durchfluss schonend in Aquariumwasser ausdrücken."
+    actions_optional:
+      - "Proben auf Ammonium/Nitrit/Nitrat und ggf. UV-Klärung nur nach Bedarf erwägen."
+    avoid:
+      - "Nicht mit starken Klärchemikalien oder unkontrolliertem Massenfiltertausch überreagieren."
+    facts:
+      - "Organische Last und schwankende Biofiltration begünstigen Bakterienblüten."
+
+  - id: algae_bloom_v1
+    name: Algen / Grünwasser-Tendenz
+    diagnosis_type: algae_bloom
+    severity: medium
+    confidence: 0.78
+    summary_de: >-
+      Hohe Nährstoffe plus typische Algen-Symptome deuten auf eine ausgeprägte Algenentwicklung hin.
+    reasoning_de: >-
+      Nitrat ist ein häufiger Treiber; einseitig langes Licht und hohe Nährstoffe begünstigen Grünalgen
+      oder Aufwuchs auf Oberflächen.
+    follow_up_questions_de:
+      - "Wie lange brennt die Beleuchtung täglich (Stunden)?"
+      - "Gibt es direkte Sonneneinstrahlung aufs Becken?"
+    safety_note_de: >-
+      Eine rasche, harte CO2- oder Düngerdosierung ohne Kontrolle kann andere Risiken setzen – schrittweise vorgehen.
+    when:
+      all:
+        - field: nitrate_mg_l
+          gte: 40
+        - field: symptoms
+          contains_any: [green_water, algae_on_glass, algae_carpet, heavy_algae]
+    actions_now:
+      - "Beleuchtungsdauer um 1–2 Stunden reduzieren; direktes Sonnenlicht vermeiden."
+      - "Nährstoffquellen prüfen (Fütterung, Mulm) und Teilwasser strategisch tauschen."
+    actions_optional:
+      - "Nitratreste zeitversetzt testen; Pflanzenbestand stärken, damit Nährstoffe verbraucht werden."
+    avoid:
+      - "Kein gleichzeitiges 'Alles reinigen, Nährstoffe voll Dosieren' ohne Messung."
+    facts:
+      - "Algen reagieren auf Licht, Nährstoffe und Stabilität – meist braucht es mehrere Hebel gleichzeitig."
+
+  - id: oxygen_risk_v1
+    name: Sauerstoff / Atmung (verdächtig)
+    diagnosis_type: oxygen_risk
+    severity: high
+    confidence: 0.86
+    summary_de: >-
+      Gemessene niedrige O2-Sättigung oder typische 'gasping'-Symptome sind ein Warnsignal für Sauerstoffmangel.
+    reasoning_de: >-
+      Warmes Wasser löst weniger Gas; dichter Bestand, wenig Oberflächenbewegung oder Biofilter-Stress können die Lage verschärfen.
+    follow_up_questions_de:
+      - "Ist die Wassertemperatur ungewöhnlich hoch?"
+      - "Ist die Wasseroberfläche wenig bewegt oder stark mit Öl/Pflanzen bedeckt?"
+    safety_note_de: >-
+      Akut atemnotbedingte Symptome können lebensbedrohlich sein – handeln Sie zügig und fragen Sie bei Bedarf fachliche Hilfe ein.
+    when:
+      any:
+        - field: oxygen_mg_l
+          lte: 5.5
+        - field: symptoms
+          contains_any: [fish_gasping_surface, gasping, labored_breathing]
+    actions_now:
+      - "Sofort Oberflächenbewegung erhöhen (Luftstein/Anströmung) und Deckel/Abdeckungen prüfen."
+      - "Temperatur senken, falls sie sehr hoch ist (vorsichtig; nicht schocken)."
+    actions_optional:
+      - "Nachtabsenkung der Temperatur oder höherer Luftaustausch im Raum prüfen."
+    avoid:
+      - "Keine abrupten massiven Wasserwechsel ohne Temperatur-/GH-Anpassung."
+    facts:
+      - "Gute Gaswechsel an der Oberfläche sind oft der schnellste Hebel bei Sauerstoffsorgen."
+
+  - id: co2_ph_kh_risk_v1
+    name: CO2 / pH–KH (verdächtig bei bepflanztem Becken)
+    diagnosis_type: co2_ph_kh_risk
+    severity: medium
+    confidence: 0.7
+    summary_de: >-
+      Ein sehr niedriger pH bei noch vorhandener Karbonathärte oder sehr hoher gelöster CO2-Schätzung passt zu CO2-/pH-Risiken in bepflanzten Systemen.
+    reasoning_de: >-
+      Starkes CO2 drückt den pH; ohne Kontrolle sind starke pH-Schwankungen möglich. KH wirkt als Puffer,
+      aber die Kombination aus Mustern muss zum Setup passen.
+    follow_up_questions_de:
+      - "Wird CO2 dosiert? Wenn ja: wie wird er gesteuert (Tag-/Nacht-Zyklen)?"
+      - "Gibt es Hinweise auf starke pH-Sprünge nach Beleuchtungswechsel?"
+    safety_note_de: >-
+      pH stark manipulieren ohne Messung kann stabil laufende Becken stören. Schrittweise vorgehen und Werte dokumentieren.
+    when:
+      any:
+        - all:
+            - field: ph
+              lte: 6.6
+            - field: kh_dkh
+              gte: 3
+            - field: symptoms
+              contains_any:
+                - co2_related_ph_swings
+                - fish_gasping_morning
+                - heavy_co2_dosing
+
+        - field: co2_mg_l
+          gte: 30
+
+        - field: symptoms
+          contains_any:
+            - co2_related_ph_swings
+            - fish_gasping_morning
+            - heavy_co2_dosing
+    actions_now:
+      - "CO2-Zufuhr und Sprudelzeit prüfen; Abends Abschalten/Drosseln testen."
+      - "pH und KH parallel messen; Extrem-Korrekturen vermeiden."
+    actions_optional:
+      - "Oberflächenwelligkeit nachts leicht erhöhen, um CO2-Entgasung zu unterstützen."
+    avoid:
+      - "Keine großen pH-Sprünge durch Pulver/Puffer ohne Rezept und Kontrolle."
+    facts:
+      - "In Aquarium und Aquascaping ist das Zusammenspiel CO2–pH–KH zentral, aber setup-abhängig."

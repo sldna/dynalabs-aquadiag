@@ -1,0 +1,43 @@
+---
+alwaysApply: true
+---
+
+# AquaDiag V1 Product Scope
+
+This project is AquaDiag V1: a minimal aquarium diagnosis MVP.
+
+The product is a decision-support system, not a generic aquarium logbook.
+
+Always optimize for:
+- fast diagnosis
+- clear user action
+- low input friction
+- mobile-first UX
+- deterministic rule-based diagnosis
+
+V1 includes only:
+- tank profile
+- water test / problem input
+- symptom input
+- YAML rule engine
+- diagnosis result
+- optional AI explanation
+- SQLite
+- Docker Compose
+
+Never add in V1:
+- authentication
+- payment
+- Kubernetes
+- PostgreSQL as requirement
+- ESP32
+- Shelly
+- sensor integrations
+- photo analysis
+- ML training
+- community features
+- complex admin panels
+
+The AI layer must not decide the diagnosis.
+The rule engine decides.
+The AI only explains, summarizes, and asks follow-up questions.
