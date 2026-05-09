@@ -64,9 +64,20 @@ export type DiagnosisMeta = {
   evaluated_rules: number;
   matched_count: number;
   generated_at: string;
+  ai_status?: "disabled" | "ok" | "failed" | string;
   diagnosis_id: number;
   water_test_id: number;
   tank_id: number;
+};
+
+export type AIExplanation = {
+  summary: string;
+  reasoning_public: string;
+  actions_now: string[];
+  actions_optional: string[];
+  avoid: string[];
+  follow_up_questions: string[];
+  safety_note: string;
 };
 
 export type DiagnoseMatchedResponse = {
@@ -74,6 +85,7 @@ export type DiagnoseMatchedResponse = {
   top_diagnosis: DiagnosisItem | null;
   diagnoses: DiagnosisItem[];
   matched_rules: string[];
+  ai_explanation?: AIExplanation | null;
   meta: DiagnosisMeta;
 };
 
@@ -84,6 +96,7 @@ export type DiagnoseUnknownResponse = {
   top_diagnosis?: DiagnosisItem | null;
   diagnoses?: DiagnosisItem[];
   matched_rules?: string[];
+  ai_explanation?: AIExplanation | null;
   meta?: DiagnosisMeta;
 };
 

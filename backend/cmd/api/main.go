@@ -54,7 +54,14 @@ func main() {
 		"rules_evaluated", rs.EvaluatedCount(),
 	)
 
-	svc := diagnosis.NewService(sqlDB, rs, ai.ConfigFromEnv())
+	aiSvc := ai.NewServiceFromEnv()
+	slog.Info("ai_config",
+		"enabled", aiSvc != nil && aiSvc.Enabled(),
+		"base_host", aiSvc.BaseHost(),
+		"model", aiSvc.Model(),
+		"timeout_seconds", aiSvc.TimeoutSeconds(),
+	)
+	svc := diagnosis.NewService(sqlDB, rs, aiSvc)
 	srv := api.NewServer(sqlDB, svc)
 
 	mux := http.NewServeMux()

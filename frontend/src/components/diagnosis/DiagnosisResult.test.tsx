@@ -35,3 +35,70 @@ describe("DiagnosisResult unknown state", () => {
   });
 });
 
+describe("DiagnosisResult AI explanation", () => {
+  it("renders AI-Erklärung when ai_explanation exists", () => {
+    render(
+      <DiagnosisResult
+        result={{
+          status: "matched",
+          top_diagnosis: {
+            rule_id: "r1",
+            name: "Test",
+            diagnosis_type: "x",
+            severity: "low",
+            confidence: 0.5,
+            summary_de: "S",
+            reasoning_de: "R",
+            actions_now: ["A"],
+            actions_optional: ["B"],
+            avoid: ["C"],
+            follow_up_questions_de: [],
+            safety_note_de: "",
+            facts: [],
+          },
+          diagnoses: [
+            {
+              rule_id: "r1",
+              name: "Test",
+              diagnosis_type: "x",
+              severity: "low",
+              confidence: 0.5,
+              summary_de: "S",
+              reasoning_de: "R",
+              actions_now: ["A"],
+              actions_optional: ["B"],
+              avoid: ["C"],
+              follow_up_questions_de: [],
+              safety_note_de: "",
+              facts: [],
+            },
+          ],
+          matched_rules: ["r1"],
+          ai_explanation: {
+            summary: "AI summary",
+            reasoning_public: "AI reasoning",
+            actions_now: [],
+            actions_optional: [],
+            avoid: [],
+            follow_up_questions: [],
+            safety_note: "AI safety",
+          },
+          meta: {
+            rule_engine_version: "1",
+            evaluated_rules: 1,
+            matched_count: 1,
+            generated_at: "2026-05-09T07:00:00Z",
+            ai_status: "ok",
+            diagnosis_id: 1,
+            water_test_id: 1,
+            tank_id: 1,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("AI-Erklärung")).toBeInTheDocument();
+    expect(screen.getByText(/AI summary/)).toBeInTheDocument();
+  });
+});
+

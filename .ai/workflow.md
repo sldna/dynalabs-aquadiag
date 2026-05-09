@@ -15,6 +15,25 @@ Nach jeder Phase:
    - Wie wurde getestet?
    - Was ist der nächste sinnvolle Schritt?
 
+## Git Branch Regel
+
+Für jedes neue Feature, jeden Bugfix und jedes Refactoring muss ein eigener Branch erstellt werden.
+
+Vor Änderungen:
+1. `git branch --show-current` ausführen
+2. `git status --short` prüfen
+3. Falls auf main/master/develop:
+   - neuen Branch erstellen
+   - Beispiel: `git checkout -b feature/ai-explanation-layer`
+
+Es darf nicht direkt auf main/master/develop gearbeitet werden.
+
+Am Ende jeder Phase:
+- Tests ausführen
+- geänderte Dateien auflisten
+- Commit Message vorschlagen
+- nicht automatisch mergen
+
 ## Aktueller Stand
 
 Phase 1 ist abgeschlossen:
