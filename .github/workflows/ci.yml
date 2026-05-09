@@ -3,11 +3,14 @@ name: CI
 
 on:
   pull_request:
+    branches:
+      - main
   push:
     branches:
-      - "**"
-    branches-ignore:
       - main
+      - feature/**
+      - fix/**
+      - refactor/**
 
 permissions:
   contents: read
