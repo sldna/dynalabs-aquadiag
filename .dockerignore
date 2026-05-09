@@ -1,0 +1,27 @@
+.git
+.github
+.cursor
+**/.DS_Store
+
+# Local runtime artifacts
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/aquadiag.db
+**/data/
+
+# Frontend build/cache
+frontend/node_modules
+frontend/.next
+frontend/out
+frontend/.turbo
+
+# Backend build/cache
+backend/**/bin
+backend/**/dist
+backend/**/.cache
+
+# Misc
+**/coverage
+**/*.log
+
