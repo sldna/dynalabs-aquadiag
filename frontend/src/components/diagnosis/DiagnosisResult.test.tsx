@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { DiagnosisResult } from "./DiagnosisResult";
 
 const noopSave = vi.fn().mockResolvedValue(undefined);
-const noopNewWith = vi.fn();
+const noopReanalyze = vi.fn().mockResolvedValue(undefined);
 
 describe("DiagnosisResult unknown state", () => {
   it("renders dedicated unknown-state UI when status is unknown", () => {
@@ -13,7 +13,7 @@ describe("DiagnosisResult unknown state", () => {
         result={{ status: "unknown" }}
         tankSummaryLine={null}
         saveFollowUpAnswers={noopSave}
-        onNewAnalysisWithAnswers={noopNewWith}
+        onReanalyzeWithFollowUps={noopReanalyze}
       />,
     );
 
@@ -43,7 +43,7 @@ describe("DiagnosisResult unknown state", () => {
         result={{ status: "unknown" }}
         tankSummaryLine={null}
         saveFollowUpAnswers={noopSave}
-        onNewAnalysisWithAnswers={noopNewWith}
+        onReanalyzeWithFollowUps={noopReanalyze}
         onRetry={onRetry}
       />,
     );
@@ -114,7 +114,7 @@ describe("DiagnosisResult AI explanation", () => {
         }}
         tankSummaryLine="Aquarium · 120 l"
         saveFollowUpAnswers={noopSave}
-        onNewAnalysisWithAnswers={noopNewWith}
+        onReanalyzeWithFollowUps={noopReanalyze}
       />,
     );
 
@@ -178,7 +178,7 @@ describe("DiagnosisResult follow-ups", () => {
         }}
         tankSummaryLine="Beta · 90 l"
         saveFollowUpAnswers={noopSave}
-        onNewAnalysisWithAnswers={noopNewWith}
+        onReanalyzeWithFollowUps={noopReanalyze}
       />,
     );
 
@@ -188,7 +188,7 @@ describe("DiagnosisResult follow-ups", () => {
       screen.getByRole("button", { name: "Antworten speichern" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Neue Analyse mit Antworten starten" }),
+      screen.getByRole("button", { name: "Analyse mit Antworten aktualisieren" }),
     ).toBeInTheDocument();
   });
 
@@ -243,7 +243,7 @@ describe("DiagnosisResult follow-ups", () => {
         }}
         tankSummaryLine="Gamma · 60 l"
         saveFollowUpAnswers={noopSave}
-        onNewAnalysisWithAnswers={noopNewWith}
+        onReanalyzeWithFollowUps={noopReanalyze}
       />,
     );
 

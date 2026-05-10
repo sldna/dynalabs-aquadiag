@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DashboardNav } from "@/components/DashboardNav";
+import { PageContainer } from "@/components/layout";
 import { DeleteTankDialog } from "@/components/tanks/DeleteTankDialog";
 import { WaterMeasurementsSection } from "@/components/tanks/WaterMeasurementsSection";
 import { serverFetchBase } from "@/lib/api-base";
@@ -80,27 +81,29 @@ export default async function TankDetailPage({ params }: RouteParams) {
   return (
     <>
       <DashboardNav active="tanks" />
-      <main className="mx-auto flex min-h-0 max-w-lg flex-col gap-6 px-4 py-6">
-        <Link
-          href="/dashboard/tanks"
-          className="text-sm text-aqua-blue underline decoration-aqua-blue/40"
-        >
-          ← Zurück zur Beckenliste
-        </Link>
+      <main id="main-content">
+        <PageContainer className="flex min-h-0 flex-col gap-6 md:gap-8">
+          <Link
+            href="/dashboard/tanks"
+            className="inline-flex min-h-[44px] items-center text-sm font-medium text-aqua-blue underline decoration-aqua-blue/40 underline-offset-2"
+          >
+            ← Zurück zur Beckenliste
+          </Link>
 
-        {result.kind === "invalid_id" ? (
-          <NotFoundPanel reason="Ungültige Becken-ID." />
-        ) : result.kind === "not_found" ? (
-          <NotFoundPanel reason="Becken nicht gefunden." />
-        ) : result.kind === "error" ? (
-          <ErrorPanel message={result.message} />
-        ) : (
-          <TankDetail
-            tank={result.tank}
-            lastMeasurementAt={result.lastMeasurementAt}
-            waterTests={result.waterTests}
-          />
-        )}
+          {result.kind === "invalid_id" ? (
+            <NotFoundPanel reason="Ungültige Becken-ID." />
+          ) : result.kind === "not_found" ? (
+            <NotFoundPanel reason="Becken nicht gefunden." />
+          ) : result.kind === "error" ? (
+            <ErrorPanel message={result.message} />
+          ) : (
+            <TankDetail
+              tank={result.tank}
+              lastMeasurementAt={result.lastMeasurementAt}
+              waterTests={result.waterTests}
+            />
+          )}
+        </PageContainer>
       </main>
     </>
   );
@@ -123,17 +126,21 @@ function TankDetail({
     <>
       <header className="space-y-2">
         <p className="text-sm font-medium text-aqua-deep">Becken</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-aqua-deep">
+        <h1 className="text-2xl font-semibold tracking-tight text-aqua-deep md:text-3xl">
           {tank.name}
         </h1>
-        <p className="text-sm text-aqua-deep/75">{tank.volume_liters} l · ID {tank.id}</p>
+        <p className="text-sm text-aqua-deep/75 md:text-base">
+          {tank.volume_liters} l · ID {tank.id}
+        </p>
       </header>
 
-      <section
-        className="rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card"
-        aria-label="Becken-Details"
-      >
-        <dl className="grid grid-cols-1 gap-3 text-sm">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:items-start lg:gap-8">
+        <div className="min-w-0 space-y-6">
+          <section
+            className="rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card sm:p-5"
+            aria-label="Becken-Details"
+          >
+            <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 md:gap-x-6 md:gap-y-4">
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
               Volumen
@@ -164,20 +171,25 @@ function TankDetail({
               <dd className="mt-0.5 whitespace-pre-wrap text-aqua-deep">{notes}</dd>
             </div>
           ) : null}
-        </dl>
-      </section>
+            </dl>
+          </section>
 
-      <WaterMeasurementsSection tankId={tank.id} waterTests={waterTests} />
+          <WaterMeasurementsSection tankId={tank.id} waterTests={waterTests} />
+        </div>
 
-      <section className="space-y-2" aria-label="Aktionen">
-        <Link
-          href={`/dashboard/tanks/${tank.id}/edit`}
-          className="block w-full rounded-button border border-aqua-blue bg-white px-4 py-3 text-center text-sm font-semibold text-aqua-deep hover:bg-aqua-soft"
-        >
-          Becken bearbeiten
-        </Link>
-        <DeleteTankDialog tankId={tank.id} tankName={tank.name} />
-      </section>
+        <aside className="mt-8 space-y-3 lg:mt-0" aria-label="Aktionen">
+          <section className="space-y-3 rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card sm:p-5">
+            <h2 className="text-sm font-semibold text-aqua-deep">Aktionen</h2>
+            <Link
+              href={`/dashboard/tanks/${tank.id}/edit`}
+              className="flex min-h-[44px] w-full items-center justify-center rounded-button border border-aqua-blue bg-white px-4 py-3 text-center text-sm font-semibold text-aqua-deep hover:bg-aqua-soft"
+            >
+              Becken bearbeiten
+            </Link>
+            <DeleteTankDialog tankId={tank.id} tankName={tank.name} />
+          </section>
+        </aside>
+      </div>
     </>
   );
 }

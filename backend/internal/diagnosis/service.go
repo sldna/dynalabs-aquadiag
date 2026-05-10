@@ -34,6 +34,7 @@ func NewService(database *sql.DB, rs rules.Ruleset, aiSvc *ai.Service) *Service 
 
 // Diagnose validiert, speichert Wasserwerte, wertet Regeln aus und persistiert das Ergebnis.
 func (s *Service) Diagnose(ctx context.Context, req models.DiagnoseRequest) (models.DiagnoseAPIResponse, error) {
+	req.FollowUpAnswers = sanitizeFollowUpAnswers(req.FollowUpAnswers)
 	if err := validateDiagnoseRequest(req); err != nil {
 		return models.DiagnoseAPIResponse{}, err
 	}
@@ -92,7 +93,7 @@ func (s *Service) Diagnose(ctx context.Context, req models.DiagnoseRequest) (mod
 	var aiErrorCode *string
 	if s.ai != nil && s.ai.Enabled() {
 		aiStatus = "failed"
-		if ex2, err := s.ai.Explain(ctx, primary, matches, matchedIDs); err == nil {
+		if ex2, err := s.ai.Explain(ctx, primary, matches, matchedIDs, req.FollowUpAnswers); err == nil {
 			aiExplanation = ex2
 			aiStatus = "ok"
 		} else if s.ai.IsDevelopment() {
@@ -104,7 +105,16 @@ func (s *Service) Diagnose(ctx context.Context, req models.DiagnoseRequest) (mod
 		aiErrorCode = &c
 	}
 
-	row, err := diagnosisRowFrom(waterTestID, primary, matchedIDs, runnerUp, ex)
+	followJSON := "[]"
+	if len(req.FollowUpAnswers) > 0 {
+		b, err := json.Marshal(req.FollowUpAnswers)
+		if err != nil {
+			return models.DiagnoseAPIResponse{}, err
+		}
+		followJSON = string(b)
+	}
+
+	row, err := diagnosisRowFrom(waterTestID, primary, matchedIDs, runnerUp, ex, followJSON)
 	if err != nil {
 		return models.DiagnoseAPIResponse{}, err
 	}
@@ -179,6 +189,8 @@ func validateDiagnoseRequest(req models.DiagnoseRequest) error {
 			Message: "Mindestens ein Wasserparameter oder ein nicht-leeres Symptom ist erforderlich.",
 		})
 	}
+
+	appendFollowUpAnswersValidation(&errs, req.FollowUpAnswers)
 
 	if len(errs) == 0 {
 		return nil
@@ -281,6 +293,7 @@ func diagnosisRowFrom(
 	matchedIDs []string,
 	runnerUp []models.RunnerUpItem,
 	explanation models.Explanation,
+	followUpAnswersJSON string,
 ) (models.DiagnosisResultRow, error) {
 	an, err := json.Marshal(primary.ActionsNow)
 	if err != nil {
@@ -311,6 +324,11 @@ func diagnosisRowFrom(
 		return models.DiagnosisResultRow{}, err
 	}
 
+	fu := followUpAnswersJSON
+	if strings.TrimSpace(fu) == "" {
+		fu = "[]"
+	}
+
 	return models.DiagnosisResultRow{
 		WaterTestID:         waterTestID,
 		DiagnosisType:       primary.DiagnosisType,
@@ -323,6 +341,6 @@ func diagnosisRowFrom(
 		MatchedRuleIDsJSON:  string(matchedJSON),
 		RunnerUpJSON:        string(ruJSON),
 		ExplanationJSON:     string(exJSON),
-		FollowUpAnswersJSON: "{}",
+		FollowUpAnswersJSON: fu,
 	}, nil
 }

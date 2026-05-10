@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
 import { browserApiBase } from "@/lib/api-base";
-import { appendFollowUpAnswersToNotes } from "@/lib/follow-up-notes";
-import type { DiagnoseAPIResponse, Tank } from "@/lib/types";
+import { Card } from "@/components/layout";
+import type { DiagnoseAPIResponse, FollowUpAnswerPair, Tank } from "@/lib/types";
 import {
   DiagnosisResult,
   DiagnosisResultEmpty,
@@ -74,6 +74,32 @@ function isMockEnabled(): boolean {
   return process.env.NEXT_PUBLIC_DIAGNOSE_MOCK === "1";
 }
 
+function draftToFollowUpPairs(
+  questions: string[],
+  draft: Record<string, string>,
+): FollowUpAnswerPair[] {
+  const out: FollowUpAnswerPair[] = [];
+  questions.forEach((question, i) => {
+    const answer = (draft[String(i)] ?? "").trim();
+    if (!answer) return;
+    out.push({ question, answer });
+  });
+  return out;
+}
+
+function pairsToIndexedAnswers(
+  questions: string[],
+  pairs: FollowUpAnswerPair[],
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    const hit = pairs.find((p) => p.question === q);
+    if (hit) out[String(i)] = hit.answer;
+  }
+  return out;
+}
+
 export function DiagnoseForm({
   initialTanks,
   initialTankId,
@@ -119,8 +145,10 @@ export function DiagnoseForm({
   };
 
   const [busy, setBusy] = useState(false);
+  const [reanalysisBusy, setReanalysisBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DiagnoseAPIResponse | null>(null);
+  const [reanalysisUpdatedNote, setReanalysisUpdatedNote] = useState(false);
 
   const symptoms = useMemo(() => Array.from(picked), [picked]);
 
@@ -204,72 +232,155 @@ export function DiagnoseForm({
     [mock, result],
   );
 
-  const handleNewAnalysisWithAnswers = useCallback(
-    (answers: Record<string, string>) => {
-      if (result?.status === "matched" && result.top_diagnosis) {
-        const qs = result.top_diagnosis.follow_up_questions_de;
-        setNotes((n) => appendFollowUpAnswersToNotes(n, qs, answers));
+  const buildDiagnosePayload = useCallback(
+    (
+      extra?: FollowUpAnswerPair[],
+    ): { payload: Record<string, unknown> } | { error: string } => {
+      if (hasValidationErrors) {
+        return { error: "Bitte korrigiere die markierten Eingaben." };
       }
-      setResult(null);
-      setError(null);
+
+      const water: Record<string, number | string> = {};
+      if (validation.ph.value !== undefined) water.ph = validation.ph.value;
+      if (validation.kh.value !== undefined) water.kh_dkh = validation.kh.value;
+      if (validation.gh.value !== undefined) water.gh_dgh = validation.gh.value;
+      if (validation.temp.value !== undefined) water.temp_c = validation.temp.value;
+      if (validation.nitrite.value !== undefined)
+        water.nitrite_mg_l = validation.nitrite.value;
+      if (validation.nitrate.value !== undefined)
+        water.nitrate_mg_l = validation.nitrate.value;
+      if (validation.ammonia.value !== undefined)
+        water.ammonium_mg_l = validation.ammonia.value;
+      if (validation.o2.value !== undefined) water.oxygen_mg_l = validation.o2.value;
+      if (validation.co2.value !== undefined) water.co2_mg_l = validation.co2.value;
+
+      const payload: Record<string, unknown> = {
+        water,
+        symptoms,
+      };
+
+      if (extra !== undefined && extra.length > 0) {
+        payload.follow_up_answers = extra;
+      }
+
+      if (tankMode === "existing") {
+        if (tankId === "" || typeof tankId !== "number") {
+          return { error: "Becken wählen oder „Neu anlegen“ nutzen." };
+        }
+        payload.tank_id = tankId;
+      } else {
+        if (!newName.trim()) {
+          return { error: "Beckenname für neues Becken eingeben." };
+        }
+        payload.tank = {
+          name: newName.trim(),
+          volume_liters: validation.newVolume.value ?? 0,
+        };
+      }
+
+      const hasWater = Object.keys(water).length > 0;
+      const n = notes.trim();
+      if (!hasWater && symptoms.length === 0 && !n) {
+        return { error: "Mindestens ein Symptom oder ein Messwert." };
+      }
+      if (n) water.notes = n;
+
+      return { payload };
     },
-    [result],
+    [
+      hasValidationErrors,
+      validation.ph.value,
+      validation.kh.value,
+      validation.gh.value,
+      validation.temp.value,
+      validation.nitrite.value,
+      validation.nitrate.value,
+      validation.ammonia.value,
+      validation.o2.value,
+      validation.co2.value,
+      symptoms,
+      tankMode,
+      tankId,
+      newName,
+      validation.newVolume.value,
+      notes,
+    ],
+  );
+
+  const handleReanalyzeWithFollowUps = useCallback(
+    async (answers: Record<string, string>) => {
+      if (!result || result.status !== "matched" || !result.top_diagnosis) {
+        throw new Error("Keine Diagnose zum Aktualisieren.");
+      }
+      const qs = result.top_diagnosis.follow_up_questions_de;
+      const pairs = draftToFollowUpPairs(qs, answers);
+      if (pairs.length === 0) {
+        throw new Error("Bitte mindestens eine Rückfrage mit Antwort ausfüllen.");
+      }
+
+      const built = buildDiagnosePayload(pairs);
+      if ("error" in built) {
+        throw new Error(built.error);
+      }
+
+      setError(null);
+      setReanalysisBusy(true);
+      try {
+        if (mock) {
+          await new Promise((r) => setTimeout(r, 450));
+          const next = mockDiagnoseResponse();
+          const newQs = next.top_diagnosis?.follow_up_questions_de ?? qs;
+          setResult({
+            ...next,
+            follow_up_answers: pairsToIndexedAnswers(newQs, pairs),
+          });
+        } else {
+          const res = await fetch(`${browserApiBase()}/v1/diagnose`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(built.payload),
+          });
+          const raw: unknown = await res.json().catch(() => null);
+          if (!res.ok) {
+            const msg =
+              raw &&
+              typeof raw === "object" &&
+              raw !== null &&
+              "message" in raw &&
+              typeof (raw as { message: unknown }).message === "string"
+                ? (raw as { message: string }).message
+                : `HTTP ${res.status}`;
+            throw new Error(msg);
+          }
+          const data = raw as DiagnoseAPIResponse;
+          const newQs =
+            data.status === "matched" && data.top_diagnosis
+              ? data.top_diagnosis.follow_up_questions_de
+              : qs;
+          setResult({
+            ...data,
+            follow_up_answers: pairsToIndexedAnswers(newQs, pairs),
+          });
+        }
+        setReanalysisUpdatedNote(true);
+      } finally {
+        setReanalysisBusy(false);
+      }
+    },
+    [buildDiagnosePayload, mock, result],
   );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setResult(null);
+    setReanalysisUpdatedNote(false);
 
-    if (hasValidationErrors) {
-      setError("Bitte korrigiere die markierten Eingaben.");
+    const built = buildDiagnosePayload();
+    if ("error" in built) {
+      setError(built.error);
       return;
     }
-
-    const water: Record<string, number | string> = {};
-    if (validation.ph.value !== undefined) water.ph = validation.ph.value;
-    if (validation.kh.value !== undefined) water.kh_dkh = validation.kh.value;
-    if (validation.gh.value !== undefined) water.gh_dgh = validation.gh.value;
-    if (validation.temp.value !== undefined) water.temp_c = validation.temp.value;
-    if (validation.nitrite.value !== undefined)
-      water.nitrite_mg_l = validation.nitrite.value;
-    if (validation.nitrate.value !== undefined)
-      water.nitrate_mg_l = validation.nitrate.value;
-    if (validation.ammonia.value !== undefined)
-      water.ammonium_mg_l = validation.ammonia.value;
-    if (validation.o2.value !== undefined)
-      water.oxygen_mg_l = validation.o2.value;
-    if (validation.co2.value !== undefined) water.co2_mg_l = validation.co2.value;
-
-    const payload: Record<string, unknown> = {
-      water,
-      symptoms,
-    };
-
-    if (tankMode === "existing") {
-      if (tankId === "" || typeof tankId !== "number") {
-        setError("Becken wählen oder „Neu anlegen“ nutzen.");
-        return;
-      }
-      payload.tank_id = tankId;
-    } else {
-      if (!newName.trim()) {
-        setError("Beckenname für neues Becken eingeben.");
-        return;
-      }
-      payload.tank = {
-        name: newName.trim(),
-        volume_liters: validation.newVolume.value ?? 0,
-      };
-    }
-
-    const hasWater = Object.keys(water).length > 0;
-    const n = notes.trim();
-    if (!hasWater && symptoms.length === 0 && !n) {
-      setError("Mindestens ein Symptom oder ein Messwert.");
-      return;
-    }
-    if (n) water.notes = n;
 
     setBusy(true);
     try {
@@ -280,7 +391,7 @@ export function DiagnoseForm({
         const res = await fetch(`${browserApiBase()}/v1/diagnose`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(built.payload),
         });
         const raw: unknown = await res.json().catch(() => null);
         if (!res.ok) {
@@ -310,16 +421,41 @@ export function DiagnoseForm({
       ? initialTanks.find((t) => t.id === tankId)
       : null;
 
+  const interactionBusy = busy || reanalysisBusy;
+
   return (
-    <div className="mx-auto w-full max-w-[720px] lg:max-w-[960px]">
+    <div className="w-full min-w-0 xl:max-w-[1180px]">
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,290px)] lg:items-start lg:gap-8">
         <div className="min-w-0 space-y-6">
           <form
             id="diagnose-form"
             onSubmit={onSubmit}
-            aria-busy={busy}
+            aria-busy={interactionBusy}
             className="space-y-5 rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card sm:p-5"
           >
+            {sidebarTank ? (
+              <Card className="border-aqua-blue/30 bg-aqua-soft/70 shadow-none">
+                <p className="text-xs font-semibold uppercase tracking-wide text-aqua-deep/60">
+                  Ausgewähltes Becken
+                </p>
+                <p className="mt-1 text-lg font-semibold text-aqua-deep">{sidebarTank.name}</p>
+                {sidebarTank.volume_liters > 0 ? (
+                  <p className="mt-1 text-sm text-aqua-deep/80">{sidebarTank.volume_liters} l</p>
+                ) : (
+                  <p className="mt-1 text-sm text-aqua-deep/65">Volumen nicht angegeben</p>
+                )}
+              </Card>
+            ) : tankMode === "new" ? (
+              <Card className="border-aqua-deep/15 bg-aqua-sand/30 shadow-none">
+                <p className="text-xs font-semibold uppercase tracking-wide text-aqua-deep/60">
+                  Neues Becken
+                </p>
+                <p className="text-sm text-aqua-deep/85">
+                  Mit dieser Messung wird ein neues Becken angelegt – siehe Felder unten.
+                </p>
+              </Card>
+            ) : null}
+
             <fieldset className="space-y-3">
               <legend className="text-base font-semibold text-aqua-deep">
                 Becken
@@ -343,7 +479,7 @@ export function DiagnoseForm({
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  disabled={busy || initialTanks.length === 0}
+                  disabled={interactionBusy || initialTanks.length === 0}
                   onClick={() => setTankMode("existing")}
                   className={`min-h-[44px] rounded-lg px-4 py-2.5 text-sm font-medium ring-1 disabled:opacity-60 ${
                     tankMode === "existing"
@@ -355,7 +491,7 @@ export function DiagnoseForm({
                 </button>
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={interactionBusy}
                   onClick={() => setTankMode("new")}
                   className={`min-h-[44px] rounded-lg px-4 py-2.5 text-sm font-medium ring-1 disabled:opacity-60 ${
                     tankMode === "new"
@@ -371,7 +507,7 @@ export function DiagnoseForm({
                 <label className="block text-sm font-medium text-aqua-deep">
                   Becken für diese Analyse
                   <select
-                    disabled={busy || initialTanks.length === 0}
+                    disabled={interactionBusy || initialTanks.length === 0}
                     className="mt-2 min-h-[44px] w-full rounded-lg border border-aqua-deep/20 bg-white px-3 py-2.5 text-base text-aqua-deep disabled:opacity-60 md:text-sm"
                     value={tankId === "" ? "" : String(tankId)}
                     onChange={(e) => {
@@ -397,7 +533,7 @@ export function DiagnoseForm({
                   <label className="block text-sm font-medium text-aqua-deep">
                     Name des neuen Beckens
                     <input
-                      disabled={busy}
+                      disabled={interactionBusy}
                       className="mt-2 min-h-[44px] w-full rounded-lg border border-aqua-deep/20 px-3 py-2.5 text-base text-aqua-deep disabled:opacity-60 md:text-sm"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
@@ -408,7 +544,7 @@ export function DiagnoseForm({
                     Volumen in Litern (optional)
                     <input
                       inputMode="decimal"
-                      disabled={busy}
+                      disabled={interactionBusy}
                       className={`mt-2 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base disabled:opacity-60 md:text-sm ${
                         validation.newVolume.error
                           ? "border-status-critical"
@@ -446,7 +582,7 @@ export function DiagnoseForm({
                         <button
                           key={s.id}
                           type="button"
-                          disabled={busy}
+                          disabled={interactionBusy}
                           onClick={() => toggle(s.id)}
                           aria-pressed={picked.has(s.id)}
                           className={`min-h-[44px] rounded-full px-4 py-2.5 text-sm font-medium ring-1 disabled:opacity-60 ${
@@ -474,7 +610,7 @@ export function DiagnoseForm({
                 pH
                 <input
                   inputMode="decimal"
-                  disabled={busy}
+                  disabled={interactionBusy}
                   className={`mt-2 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base disabled:opacity-60 md:text-sm ${
                     validation.ph.error ? "border-status-critical" : "border-aqua-deep/20"
                   }`}
@@ -494,7 +630,7 @@ export function DiagnoseForm({
                 -Äquivalent)
                 <input
                   inputMode="decimal"
-                  disabled={busy}
+                  disabled={interactionBusy}
                   className={`mt-2 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base disabled:opacity-60 md:text-sm ${
                     validation.kh.error ? "border-status-critical" : "border-aqua-deep/20"
                   }`}
@@ -515,7 +651,7 @@ export function DiagnoseForm({
                 )
                 <input
                   inputMode="decimal"
-                  disabled={busy}
+                  disabled={interactionBusy}
                   className={`mt-2 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base disabled:opacity-60 md:text-sm ${
                     validation.gh.error ? "border-status-critical" : "border-aqua-deep/20"
                   }`}
@@ -532,7 +668,7 @@ export function DiagnoseForm({
                 Temperatur (°C)
                 <input
                   inputMode="decimal"
-                  disabled={busy}
+                  disabled={interactionBusy}
                   className={`mt-2 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base disabled:opacity-60 md:text-sm ${
                     validation.temp.error ? "border-status-critical" : "border-aqua-deep/20"
                   }`}
@@ -552,7 +688,7 @@ export function DiagnoseForm({
                 , mg/l)
                 <input
                   inputMode="decimal"
-                  disabled={busy}
+                  disabled={interactionBusy}
                   className={`mt-2 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base disabled:opacity-60 md:text-sm ${
                     validation.nitrite.error
                       ? "border-status-critical"
@@ -575,7 +711,7 @@ export function DiagnoseForm({
                 , mg/l)
                 <input
                   inputMode="decimal"
-                  disabled={busy}
+                  disabled={interactionBusy}
                   className={`mt-2 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base disabled:opacity-60 md:text-sm ${
                     validation.nitrate.error
                       ? "border-status-critical"
@@ -597,7 +733,7 @@ export function DiagnoseForm({
                 , mg/l)
                 <input
                   inputMode="decimal"
-                  disabled={busy}
+                  disabled={interactionBusy}
                   className={`mt-2 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base disabled:opacity-60 md:text-sm ${
                     validation.ammonia.error
                       ? "border-status-critical"
@@ -618,7 +754,7 @@ export function DiagnoseForm({
                 {" (mg/l)"}
                 <input
                   inputMode="decimal"
-                  disabled={busy}
+                  disabled={interactionBusy}
                   className={`mt-2 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base disabled:opacity-60 md:text-sm ${
                     validation.o2.error ? "border-status-critical" : "border-aqua-deep/20"
                   }`}
@@ -638,7 +774,7 @@ export function DiagnoseForm({
                 (mg/l, geschätzt)
                 <input
                   inputMode="decimal"
-                  disabled={busy}
+                  disabled={interactionBusy}
                   className={`mt-2 min-h-[44px] w-full rounded-lg border px-3 py-2.5 text-base disabled:opacity-60 md:text-sm ${
                     validation.co2.error ? "border-status-critical" : "border-aqua-deep/20"
                   }`}
@@ -658,7 +794,7 @@ export function DiagnoseForm({
               <label className="block text-sm font-medium text-aqua-deep/90">
                 Notiz (optional)
                 <input
-                  disabled={busy}
+                  disabled={interactionBusy}
                   className="mt-2 min-h-[44px] w-full rounded-lg border border-aqua-deep/20 px-3 py-2.5 text-base text-aqua-deep disabled:opacity-60 md:text-sm"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -676,20 +812,20 @@ export function DiagnoseForm({
             <div className="hidden md:block">
               <button
                 type="submit"
-                disabled={busy || hasValidationErrors}
+                disabled={interactionBusy || hasValidationErrors}
                 className="w-full rounded-button bg-aqua-blue px-4 py-3 text-sm font-semibold text-white hover:bg-[#168EAA] disabled:opacity-60"
               >
-                {busy ? "Diagnose läuft…" : "Diagnose starten"}
+                {interactionBusy ? "Diagnose läuft…" : "Diagnose starten"}
               </button>
             </div>
           </form>
 
-          {!result && !busy ? (
+          {!result && !interactionBusy ? (
             <div className="sticky bottom-0 z-10 border-t border-aqua-deep/10 bg-[linear-gradient(to_top,white,white)] pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
               <button
                 type="submit"
                 form="diagnose-form"
-                disabled={busy || hasValidationErrors}
+                disabled={interactionBusy || hasValidationErrors}
                 className="w-full rounded-button bg-aqua-blue px-4 py-3.5 text-base font-semibold text-white hover:bg-[#168EAA] disabled:opacity-60"
               >
                 Diagnose starten
@@ -697,17 +833,20 @@ export function DiagnoseForm({
             </div>
           ) : null}
 
-          {busy ? (
+          {interactionBusy ? (
             <DiagnosisResultLoading />
           ) : result ? (
             <DiagnosisResult
               result={result}
               tankSummaryLine={tankSummaryLine}
               saveFollowUpAnswers={saveFollowUpAnswers}
-              onNewAnalysisWithAnswers={handleNewAnalysisWithAnswers}
+              onReanalyzeWithFollowUps={handleReanalyzeWithFollowUps}
+              reanalysisBusy={reanalysisBusy}
+              reanalysisUpdatedNote={reanalysisUpdatedNote}
               onRetry={() => {
                 setError(null);
                 setResult(null);
+                setReanalysisUpdatedNote(false);
               }}
             />
           ) : (
@@ -755,7 +894,7 @@ export function DiagnoseForm({
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-aqua-deep/85">
               <li>Symptome und wenige Messwerte reichen oft für erste Hinweise.</li>
               <li>Du kannst das Becken vor dem Absenden noch wechseln.</li>
-              <li>Nachfragen kannst du speichern – ohne neue Regelberechnung.</li>
+              <li>Rückfragen kannst du speichern oder über „Analyse mit Antworten aktualisieren“ neu auswerten lassen.</li>
             </ul>
           </div>
         </aside>

@@ -7,7 +7,9 @@ export type FollowUpAnswersSectionProps = {
   diagnosisId?: number;
   initialAnswers?: Record<string, string>;
   onPersistAnswers: (answers: Record<string, string>) => Promise<void>;
-  onNewAnalysisWithAnswers?: (answers: Record<string, string>) => void;
+  /** POST /v1/diagnose erneut mit gleicher Messbasis und „follow_up_answers“. */
+  onReanalyzeWithFollowUps?: (answers: Record<string, string>) => Promise<void>;
+  reanalysisBusy?: boolean;
 };
 
 export function FollowUpAnswersSection({
@@ -15,7 +17,8 @@ export function FollowUpAnswersSection({
   diagnosisId,
   initialAnswers,
   onPersistAnswers,
-  onNewAnalysisWithAnswers,
+  onReanalyzeWithFollowUps,
+  reanalysisBusy = false,
 }: FollowUpAnswersSectionProps) {
   const [draft, setDraft] = useState<Record<string, string>>(() => ({
     ...(initialAnswers ?? {}),
@@ -46,6 +49,16 @@ export function FollowUpAnswersSection({
     }
   }
 
+  async function reanalyzeWithAnswers() {
+    if (!onReanalyzeWithFollowUps) return;
+    setError(null);
+    try {
+      await onReanalyzeWithFollowUps({ ...draft });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Aktualisierung fehlgeschlagen.");
+    }
+  }
+
   const baseId =
     diagnosisId !== undefined ? `fu-${diagnosisId}` : "fu-local";
 
@@ -56,8 +69,9 @@ export function FollowUpAnswersSection({
     >
       <h3 className="text-sm font-semibold text-aqua-deep">Rückfragen</h3>
       <p className="mt-2 text-sm leading-relaxed text-aqua-deep/80">
-        Diese Antworten verbessern spätere Auswertungen, lösen aber noch keine
-        automatische Neuberechnung aus.
+        Mit „Analyse mit Antworten aktualisieren“ wird dieselbe Messbasis erneut an die API
+        geschickt; die Regelengine bleibt deterministisch, die optionale KI-Erklärung kann den
+        Kontext nutzen.
       </p>
 
       <div className="mt-4 space-y-5">
@@ -76,7 +90,7 @@ export function FollowUpAnswersSection({
                 id={inputId}
                 name={`follow_up_${key}`}
                 rows={3}
-                disabled={busy}
+                disabled={busy || reanalysisBusy}
                 value={draft[key] ?? ""}
                 onChange={(e) =>
                   setDraft((prev) => ({ ...prev, [key]: e.target.value }))
@@ -98,20 +112,20 @@ export function FollowUpAnswersSection({
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || reanalysisBusy}
           onClick={() => void save()}
           className="rounded-button bg-aqua-deep px-4 py-3 text-sm font-semibold text-white hover:bg-aqua-deep/90 disabled:opacity-60"
         >
           {busy ? "Speichern…" : "Antworten speichern"}
         </button>
-        {onNewAnalysisWithAnswers ? (
+        {onReanalyzeWithFollowUps ? (
           <button
             type="button"
-            disabled={busy}
-            onClick={() => onNewAnalysisWithAnswers({ ...draft })}
+            disabled={busy || reanalysisBusy}
+            onClick={() => void reanalyzeWithAnswers()}
             className="rounded-button border-2 border-aqua-blue bg-white px-4 py-3 text-sm font-semibold text-aqua-deep hover:bg-aqua-soft disabled:opacity-60"
           >
-            Neue Analyse mit Antworten starten
+            {reanalysisBusy ? "Analyse läuft…" : "Analyse mit Antworten aktualisieren"}
           </button>
         ) : null}
       </div>

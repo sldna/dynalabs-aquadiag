@@ -57,6 +57,11 @@ export type DiagnosisItem = {
   facts: string[];
 };
 
+export type FollowUpAnswerPair = {
+  question: string;
+  answer: string;
+};
+
 export type DiagnosisStatus = "matched" | "unknown";
 
 export type DiagnosisMeta = {

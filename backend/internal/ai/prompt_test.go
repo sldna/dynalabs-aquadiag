@@ -35,7 +35,7 @@ func TestBuildUserPrompt_IncludesSecondaryDiagnoses(t *testing.T) {
 		SafetyNoteDE:  "safe2",
 	}
 
-	p, err := BuildUserPrompt(top, []models.RuleMatch{top, secondary}, []string{"primary_rule", "secondary_rule"})
+	p, err := BuildUserPrompt(top, []models.RuleMatch{top, secondary}, []string{"primary_rule", "secondary_rule"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,5 +48,31 @@ func TestBuildUserPrompt_IncludesSecondaryDiagnoses(t *testing.T) {
 	}
 	if !strings.Contains(p, `"diagnoses"`) {
 		t.Fatalf("prompt missing diagnoses array: %s", p)
+	}
+}
+
+func TestBuildUserPrompt_IncludesFollowUpAnswers(t *testing.T) {
+	top := models.RuleMatch{
+		RuleID:          "r1",
+		DiagnosisType:   "x",
+		Severity:        "low",
+		Confidence:      0.5,
+		SummaryDE:       "s",
+		ReasoningDE:     "r",
+		FollowUpDE:      []string{},
+		SafetyNoteDE:    "",
+		ActionsNow:      []string{},
+		ActionsOptional: []string{},
+		Avoid:           []string{},
+		Facts:           []string{},
+	}
+	fu := []models.FollowUpAnswerItem{{Question: "CO₂?", Answer: "Ja"}}
+
+	p, err := BuildUserPrompt(top, []models.RuleMatch{top}, []string{"r1"}, fu)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(p, `"follow_up_answers"`) || !strings.Contains(p, "CO₂?") {
+		t.Fatalf("prompt missing follow ups: %s", p)
 	}
 }

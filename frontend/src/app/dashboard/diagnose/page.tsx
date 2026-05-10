@@ -1,5 +1,6 @@
 import { DiagnoseForm } from "@/components/DiagnoseForm";
 import { DashboardNav } from "@/components/DashboardNav";
+import { PageContainer } from "@/components/layout";
 import { serverFetchBase } from "@/lib/api-base";
 import type { Tank, TanksListResponse } from "@/lib/types";
 
@@ -39,18 +40,20 @@ export default async function DiagnosePage({
   return (
     <>
       <DashboardNav active="diagnose" />
-      <main className="mx-auto flex min-h-0 w-full flex-col gap-6 px-4 py-6 lg:px-6">
-        <header className="space-y-2">
-          <p className="text-sm font-medium text-aqua-deep">Dynalabs AquaDiag v1</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-aqua-deep">
-            Diagnose
-          </h1>
-          <p className="text-sm text-aqua-deep/75">
-            Symptome und/oder Messwerte erfassen, dann Regelengine ausführen.
-          </p>
-        </header>
+      <main id="main-content">
+        <PageContainer className="flex min-h-0 flex-col gap-6 md:gap-8">
+          <header className="space-y-2">
+            <p className="text-sm font-medium text-aqua-deep">Dynalabs AquaDiag v1</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-aqua-deep md:text-3xl">
+              Diagnose
+            </h1>
+            <p className="max-w-prose text-sm text-aqua-deep/75 md:text-base">
+              Symptome und/oder Messwerte erfassen, dann Regelengine ausführen.
+            </p>
+          </header>
 
-        <DiagnoseForm initialTanks={tanks} initialTankId={initialTankId} />
+          <DiagnoseForm initialTanks={tanks} initialTankId={initialTankId} />
+        </PageContainer>
       </main>
     </>
   );
