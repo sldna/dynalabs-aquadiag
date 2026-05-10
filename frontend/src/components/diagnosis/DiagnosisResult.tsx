@@ -2,7 +2,7 @@ import type { DiagnoseAPIResponse, DiagnosisItem } from "@/lib/types";
 import { ActionList } from "@/components/diagnosis/ActionList";
 import { AvoidList } from "@/components/diagnosis/AvoidList";
 import { DiagnosisCard } from "@/components/diagnosis/DiagnosisCard";
-import { FollowUpQuestions } from "@/components/diagnosis/FollowUpQuestions";
+import { FollowUpAnswersSection } from "@/components/diagnosis/FollowUpAnswersSection";
 import { HeroDiagnosisCard } from "@/components/diagnosis/HeroDiagnosisCard";
 
 function pickTop(result: DiagnoseAPIResponse): DiagnosisItem | null {
@@ -14,6 +14,44 @@ function pickTop(result: DiagnoseAPIResponse): DiagnosisItem | null {
 function withoutTop(all: DiagnosisItem[], top: DiagnosisItem | null) {
   if (!top) return all;
   return all.filter((d) => d.rule_id !== top.rule_id);
+}
+
+export function formatDiagnosisTimestamp(iso: string | undefined): string | null {
+  if (!iso?.trim()) return null;
+  const d = Date.parse(iso);
+  if (Number.isNaN(d)) return null;
+  return new Intl.DateTimeFormat("de-DE", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(d));
+}
+
+function ResultContextHeader({
+  tankSummaryLine,
+  generatedAtLabel,
+  diagnosisMetaLine,
+}: {
+  tankSummaryLine: string | null;
+  generatedAtLabel: string | null;
+  diagnosisMetaLine?: string | null;
+}) {
+  if (!tankSummaryLine && !generatedAtLabel && !diagnosisMetaLine) return null;
+  return (
+    <header className="rounded-card border border-aqua-deep/10 bg-aqua-soft/60 px-4 py-3 shadow-card ring-1 ring-aqua-deep/10">
+      {tankSummaryLine ? (
+        <p className="text-sm text-aqua-deep">
+          Analyse für:{" "}
+          <span className="font-semibold text-aqua-deep">{tankSummaryLine}</span>
+        </p>
+      ) : null}
+      {generatedAtLabel ? (
+        <p className="mt-1 text-xs text-aqua-deep/70">Stand: {generatedAtLabel}</p>
+      ) : null}
+      {diagnosisMetaLine ? (
+        <p className="mt-2 text-xs text-aqua-deep/55">{diagnosisMetaLine}</p>
+      ) : null}
+    </header>
+  );
 }
 
 /** Single primary action; sticky at viewport bottom on small screens, inline after content on md+. */
@@ -58,9 +96,24 @@ export function DiagnosisResultEmpty() {
   );
 }
 
-export function DiagnosisResultUnknown({ onRetry }: { onRetry?: () => void }) {
+export function DiagnosisResultUnknown({
+  onRetry,
+  tankSummaryLine,
+  generatedAtLabel,
+  diagnosisMetaLine,
+}: {
+  onRetry?: () => void;
+  tankSummaryLine?: string | null;
+  generatedAtLabel?: string | null;
+  diagnosisMetaLine?: string | null;
+}) {
   return (
     <>
+      <ResultContextHeader
+        tankSummaryLine={tankSummaryLine ?? null}
+        generatedAtLabel={generatedAtLabel ?? null}
+        diagnosisMetaLine={diagnosisMetaLine ?? null}
+      />
       <section
         className="rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card"
         aria-label="Unbekannter Diagnose-Status"
@@ -104,26 +157,70 @@ export function DiagnosisResultUnknown({ onRetry }: { onRetry?: () => void }) {
 export function DiagnosisResult({
   result,
   onRetry,
+  tankSummaryLine,
+  saveFollowUpAnswers,
+  onNewAnalysisWithAnswers,
 }: {
   result: DiagnoseAPIResponse;
   onRetry?: () => void;
+  tankSummaryLine: string | null;
+  saveFollowUpAnswers: (answers: Record<string, string>) => Promise<void>;
+  onNewAnalysisWithAnswers: (answers: Record<string, string>) => void;
 }) {
+  const meta = "meta" in result && result.meta ? result.meta : undefined;
+  const generatedAtLabel = formatDiagnosisTimestamp(meta?.generated_at);
+  const diagnosisMetaLine =
+    meta?.diagnosis_id != null && meta?.tank_id != null
+      ? `Diagnose-ID ${meta.diagnosis_id} · Becken-ID ${meta.tank_id}`
+      : null;
+
   if (result.status === "unknown") {
-    return <DiagnosisResultUnknown onRetry={onRetry} />;
+    return (
+      <DiagnosisResultUnknown
+        onRetry={onRetry}
+        tankSummaryLine={tankSummaryLine}
+        generatedAtLabel={generatedAtLabel}
+        diagnosisMetaLine={diagnosisMetaLine}
+      />
+    );
   }
 
   const diagnoses = result.diagnoses ?? [];
-  if (diagnoses.length === 0) return <DiagnosisResultUnknown onRetry={onRetry} />;
+  if (diagnoses.length === 0) {
+    return (
+      <DiagnosisResultUnknown
+        onRetry={onRetry}
+        tankSummaryLine={tankSummaryLine}
+        generatedAtLabel={generatedAtLabel}
+        diagnosisMetaLine={diagnosisMetaLine}
+      />
+    );
+  }
 
   const top = pickTop(result);
-  if (!top) return <DiagnosisResultUnknown onRetry={onRetry} />;
+  if (!top) {
+    return (
+      <DiagnosisResultUnknown
+        onRetry={onRetry}
+        tankSummaryLine={tankSummaryLine}
+        generatedAtLabel={generatedAtLabel}
+        diagnosisMetaLine={diagnosisMetaLine}
+      />
+    );
+  }
 
   const additional = withoutTop(diagnoses, top);
   const aiExplanation = "ai_explanation" in result ? result.ai_explanation : null;
 
   return (
     <>
-      <div className="space-y-5">
+      <div className="mx-auto w-full max-w-3xl space-y-5">
+        <ResultContextHeader
+          tankSummaryLine={tankSummaryLine}
+          generatedAtLabel={generatedAtLabel}
+          diagnosisMetaLine={diagnosisMetaLine}
+        />
+
         <HeroDiagnosisCard diagnosis={top} />
 
         <section
@@ -135,9 +232,16 @@ export function DiagnosisResult({
             <ActionList title="Optional" items={top.actions_optional} tone="neutral" />
             <AvoidList items={top.avoid} />
 
+            {top.safety_note_de?.trim() ? (
+              <section className="rounded-card bg-status-warning/15 p-4 ring-1 ring-status-warning/35">
+                <h3 className="text-sm font-semibold text-aqua-deep">Hinweis</h3>
+                <p className="mt-2 text-sm text-aqua-deep/90">{top.safety_note_de}</p>
+              </section>
+            ) : null}
+
             <details className="rounded-card bg-aqua-soft p-4 ring-1 ring-aqua-deep/10">
               <summary className="cursor-pointer text-sm font-semibold text-aqua-deep">
-                Erklärung
+                Erklärung (regelbasiert)
               </summary>
               {top.summary_de?.trim() ? (
                 <p className="mt-3 text-sm text-aqua-deep/85">{top.summary_de}</p>
@@ -148,15 +252,6 @@ export function DiagnosisResult({
                 </p>
               ) : null}
             </details>
-
-            <FollowUpQuestions questions={top.follow_up_questions_de} />
-
-            {top.safety_note_de?.trim() ? (
-              <section className="rounded-card bg-status-warning/15 p-4 ring-1 ring-status-warning/35">
-                <h3 className="text-sm font-semibold text-aqua-deep">Hinweis</h3>
-                <p className="mt-2 text-sm text-aqua-deep/90">{top.safety_note_de}</p>
-              </section>
-            ) : null}
           </div>
         </section>
 
@@ -180,6 +275,14 @@ export function DiagnosisResult({
             </div>
           </section>
         ) : null}
+
+        <FollowUpAnswersSection
+          questions={top.follow_up_questions_de}
+          diagnosisId={meta?.diagnosis_id}
+          initialAnswers={result.follow_up_answers}
+          onPersistAnswers={saveFollowUpAnswers}
+          onNewAnalysisWithAnswers={onNewAnalysisWithAnswers}
+        />
 
         {aiExplanation ? (
           <details className="rounded-card bg-aqua-soft/90 p-4 ring-1 ring-aqua-deep/15">

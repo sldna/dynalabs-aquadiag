@@ -25,6 +25,7 @@ func RegisterRoutes(mux *http.ServeMux, srv *Server) {
 	mux.HandleFunc("/v1/tanks/", srv.routeV1Tanks)
 	mux.HandleFunc("/v1/water-tests/", srv.routeV1WaterTests)
 	mux.HandleFunc("/v1/diagnose", srv.handleDiagnose)
+	mux.HandleFunc("/v1/diagnoses/", srv.routeV1Diagnoses)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

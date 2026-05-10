@@ -86,6 +86,8 @@ export type DiagnoseMatchedResponse = {
   diagnoses: DiagnosisItem[];
   matched_rules: string[];
   ai_explanation?: AIExplanation | null;
+  /** User answers to follow_up_questions_de (keys "0", "1", …); persisted via PATCH /v1/diagnoses/{id}. */
+  follow_up_answers?: Record<string, string>;
   meta: DiagnosisMeta;
 };
 
@@ -97,6 +99,7 @@ export type DiagnoseUnknownResponse = {
   diagnoses?: DiagnosisItem[];
   matched_rules?: string[];
   ai_explanation?: AIExplanation | null;
+  follow_up_answers?: Record<string, string>;
   meta?: DiagnosisMeta;
 };
 

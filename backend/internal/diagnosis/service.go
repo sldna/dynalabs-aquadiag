@@ -323,5 +323,6 @@ func diagnosisRowFrom(
 		MatchedRuleIDsJSON:  string(matchedJSON),
 		RunnerUpJSON:        string(ruJSON),
 		ExplanationJSON:     string(exJSON),
+		FollowUpAnswersJSON: "{}",
 	}, nil
 }

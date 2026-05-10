@@ -3,9 +3,19 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import { DiagnosisResult } from "./DiagnosisResult";
 
+const noopSave = vi.fn().mockResolvedValue(undefined);
+const noopNewWith = vi.fn();
+
 describe("DiagnosisResult unknown state", () => {
   it("renders dedicated unknown-state UI when status is unknown", () => {
-    render(<DiagnosisResult result={{ status: "unknown" }} />);
+    render(
+      <DiagnosisResult
+        result={{ status: "unknown" }}
+        tankSummaryLine={null}
+        saveFollowUpAnswers={noopSave}
+        onNewAnalysisWithAnswers={noopNewWith}
+      />,
+    );
 
     expect(
       screen.getByRole("heading", { name: "Keine eindeutige Diagnose möglich" }),
@@ -28,7 +38,15 @@ describe("DiagnosisResult unknown state", () => {
   it("renders a retry button and calls onRetry", async () => {
     const onRetry = vi.fn();
 
-    render(<DiagnosisResult result={{ status: "unknown" }} onRetry={onRetry} />);
+    render(
+      <DiagnosisResult
+        result={{ status: "unknown" }}
+        tankSummaryLine={null}
+        saveFollowUpAnswers={noopSave}
+        onNewAnalysisWithAnswers={noopNewWith}
+        onRetry={onRetry}
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Neue Analyse" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
@@ -94,6 +112,9 @@ describe("DiagnosisResult AI explanation", () => {
             tank_id: 1,
           },
         }}
+        tankSummaryLine="Aquarium · 120 l"
+        saveFollowUpAnswers={noopSave}
+        onNewAnalysisWithAnswers={noopNewWith}
       />,
     );
 
@@ -105,3 +126,129 @@ describe("DiagnosisResult AI explanation", () => {
   });
 });
 
+describe("DiagnosisResult follow-ups", () => {
+  it("renders labeled textareas for follow-up questions", () => {
+    render(
+      <DiagnosisResult
+        result={{
+          status: "matched",
+          top_diagnosis: {
+            rule_id: "r1",
+            name: "Test",
+            diagnosis_type: "x",
+            severity: "low",
+            confidence: 0.5,
+            summary_de: "S",
+            reasoning_de: "R",
+            actions_now: ["A"],
+            actions_optional: ["B"],
+            avoid: ["C"],
+            follow_up_questions_de: ["Wie oft wechselst du Wasser?", "Welche Fische?"],
+            safety_note_de: "",
+            facts: [],
+          },
+          diagnoses: [
+            {
+              rule_id: "r1",
+              name: "Test",
+              diagnosis_type: "x",
+              severity: "low",
+              confidence: 0.5,
+              summary_de: "S",
+              reasoning_de: "R",
+              actions_now: ["A"],
+              actions_optional: ["B"],
+              avoid: ["C"],
+              follow_up_questions_de: ["Wie oft wechselst du Wasser?", "Welche Fische?"],
+              safety_note_de: "",
+              facts: [],
+            },
+          ],
+          matched_rules: ["r1"],
+          meta: {
+            rule_engine_version: "1",
+            evaluated_rules: 1,
+            matched_count: 1,
+            generated_at: "2026-05-09T07:00:00Z",
+            ai_status: "disabled",
+            diagnosis_id: 9,
+            water_test_id: 2,
+            tank_id: 3,
+          },
+        }}
+        tankSummaryLine="Beta · 90 l"
+        saveFollowUpAnswers={noopSave}
+        onNewAnalysisWithAnswers={noopNewWith}
+      />,
+    );
+
+    expect(screen.getByLabelText(/Wie oft wechselst du Wasser/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Welche Fische/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Antworten speichern" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Neue Analyse mit Antworten starten" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows tank context line when tankSummaryLine is set", () => {
+    render(
+      <DiagnosisResult
+        result={{
+          status: "matched",
+          top_diagnosis: {
+            rule_id: "r1",
+            name: "Test",
+            diagnosis_type: "x",
+            severity: "low",
+            confidence: 0.5,
+            summary_de: "S",
+            reasoning_de: "R",
+            actions_now: [],
+            actions_optional: [],
+            avoid: [],
+            follow_up_questions_de: [],
+            safety_note_de: "",
+            facts: [],
+          },
+          diagnoses: [
+            {
+              rule_id: "r1",
+              name: "Test",
+              diagnosis_type: "x",
+              severity: "low",
+              confidence: 0.5,
+              summary_de: "S",
+              reasoning_de: "R",
+              actions_now: [],
+              actions_optional: [],
+              avoid: [],
+              follow_up_questions_de: [],
+              safety_note_de: "",
+              facts: [],
+            },
+          ],
+          matched_rules: ["r1"],
+          meta: {
+            rule_engine_version: "1",
+            evaluated_rules: 1,
+            matched_count: 1,
+            generated_at: "2026-05-09T12:00:00Z",
+            ai_status: "disabled",
+            diagnosis_id: 1,
+            water_test_id: 1,
+            tank_id: 1,
+          },
+        }}
+        tankSummaryLine="Gamma · 60 l"
+        saveFollowUpAnswers={noopSave}
+        onNewAnalysisWithAnswers={noopNewWith}
+      />,
+    );
+
+    expect(screen.getByText(/Analyse für:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Gamma · 60 l/)).toBeInTheDocument();
+    expect(screen.getByText(/Stand:/i)).toBeInTheDocument();
+  });
+});
