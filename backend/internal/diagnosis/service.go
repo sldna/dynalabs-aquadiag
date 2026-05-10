@@ -59,7 +59,8 @@ func (s *Service) Diagnose(ctx context.Context, req models.DiagnoseRequest) (mod
 	in := rules.FromDiagnoseRequest(req.Water, symptoms)
 
 	evStart := time.Now()
-	matches := s.rules.Evaluate(in)
+	ev := s.rules.EvaluateWithMeta(in)
+	matches := ev.Matches
 	evDur := time.Since(evStart)
 
 	matchedIDs := make([]string, 0, len(matches))
@@ -137,7 +138,7 @@ func (s *Service) Diagnose(ctx context.Context, req models.DiagnoseRequest) (mod
 		WaterTestID:       waterTestID,
 		TankID:            tankID,
 	}
-	resp := models.BuildDiagnoseResponse(matches, meta)
+	resp := models.BuildDiagnoseResponse(matches, ev.Excluded, meta)
 	resp.AIExplanation = aiExplanation
 	return resp, nil
 }

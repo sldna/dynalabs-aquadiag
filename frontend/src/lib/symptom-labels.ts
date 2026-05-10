@@ -1,0 +1,47 @@
+/** German labels for symptom ids (aligned with DiagnoseForm options where possible). */
+const LABELS: Record<string, string> = {
+  cloudy_water: "Trübes Wasser",
+  milky_water: "Milchige Trübung",
+  white_haze: "Weißlicher Schleier",
+  green_water: "Grünliches Wasser",
+  bacterial_bloom: "Verdacht Bakterienblüte",
+  fish_gasping_surface: "Schnappen an der Oberfläche",
+  gasping: "Hecheln / starkes Atmen",
+  labored_breathing: "Erschwerte Atmung",
+  fish_gasping_morning: "Morgens auffällige Atmung",
+  algae_on_glass: "Algen auf Scheiben",
+  algae_carpet: "Algenteppich",
+  heavy_algae: "Starker Algenbefall",
+  co2_related_ph_swings: "pH schwankt (CO2?)",
+  heavy_co2_dosing: "Viel CO2",
+  white_spots: "Weißpünktchen",
+  ich_like_white_grains: "Körner wie Salz auf Haut/Flossen",
+  frayed_fins: "Ausgefranste Flossen",
+  fin_damage_edges: "Flossen eingerissen",
+  cotton_wool_growth: "Watteartige Beläge",
+  fuzzy_white_patches: "Unscharfe weiße Flecken",
+  red_skin_patches: "Rötungen",
+  ulcers_sores: "Offene oder geschwürartige Stellen",
+  flashing: "Reiben an Dekoration",
+  clamped_fins: "Angelegte Flossen",
+  rapid_gill_movement: "Schnelle Kiemenarbeit",
+  loss_of_appetite: "Fressunlust",
+  hiding: "Starkes Verstecken",
+  fish_chasing: "Verfolgen / Revier",
+  fin_nipping: "Flossenbeißen",
+  uneaten_food_remains: "Liegenbleibendes Futter",
+  heavy_feeding_habit: "Sehr reichliche Fütterung",
+  new_fish_recent: "Neu eingesetzte Fische",
+  overstocked_suspected: "Verdacht Überbesatz",
+  new_aquarium_setup: "Neues / frisch umgebautes Becken",
+  frequent_small_die_offs: "Wiederholte kleine Verluste",
+  dirty_filter_low_flow: "Schwacher Filter / Durchfluss",
+  incompatible_species_mix: "Unpassende Artenmischung",
+  ph_crash_after_water_change: "pH-Sturz nach Wechsel",
+  temperature_swings: "Temperatur schwankt",
+};
+
+export function symptomLabelDE(id: string): string {
+  const key = id.trim().toLowerCase();
+  return LABELS[key] ?? id.replace(/_/g, " ");
+}

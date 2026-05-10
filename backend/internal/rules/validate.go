@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -22,6 +23,17 @@ func validateRuleset(rs Ruleset) error {
 		}
 
 		if err := validateWhen(id, "when", r.When); err != nil {
+			return fmt.Errorf("rules[%d] %w", i, err)
+		}
+		if r.ExcludeIf != nil {
+			if err := validateWhen(id, "exclude_if", *r.ExcludeIf); err != nil {
+				return fmt.Errorf("rules[%d] %w", i, err)
+			}
+		}
+		if err := validateWaterBoosts(id, r.WaterBoosts); err != nil {
+			return fmt.Errorf("rules[%d] %w", i, err)
+		}
+		if err := validateConfidenceBase(id, r.ConfidenceBase); err != nil {
 			return fmt.Errorf("rules[%d] %w", i, err)
 		}
 	}
@@ -88,6 +100,36 @@ func validateWhen(ruleID, path string, w When) error {
 		return nil
 	}
 	return validateLeaf(ruleID, path, w)
+}
+
+func validateConfidenceBase(ruleID string, v *float64) error {
+	if v == nil {
+		return nil
+	}
+	x := *v
+	if math.IsNaN(x) || math.IsInf(x, 0) {
+		return fmt.Errorf("%q confidence_base must be a finite number", ruleID)
+	}
+	if x < 0 || x > 1 {
+		return fmt.Errorf("%q confidence_base must be between 0 and 1", ruleID)
+	}
+	return nil
+}
+
+func validateWaterBoosts(ruleID string, boosts []WaterBoost) error {
+	for i, b := range boosts {
+		path := fmt.Sprintf("water_boosts[%d].when", i)
+		if err := validateWhen(ruleID, path, b.When); err != nil {
+			return err
+		}
+		if b.Add <= 0 {
+			return fmt.Errorf("%q water_boosts[%d]: add must be > 0", ruleID, i)
+		}
+		if math.IsNaN(b.Add) || math.IsInf(b.Add, 0) {
+			return fmt.Errorf("%q water_boosts[%d]: add must be finite", ruleID, i)
+		}
+	}
+	return nil
 }
 
 func validateLeaf(ruleID, path string, w When) error {

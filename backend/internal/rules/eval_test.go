@@ -34,7 +34,7 @@ func TestEvaluate_NitriteGte025_MatchesNitriteRiskV1(t *testing.T) {
 	n := 0.25
 	in := EvalInput{NitriteMgL: &n}
 	matches := rs.Evaluate(in)
-	if len(matches) == 0 || matches[0].RuleID != "nitrite_risk_v1" {
+	if len(matches) == 0 || matches[0].RuleID != "nitrite_poisoning_v1" {
 		t.Fatalf("matches=%v", matches)
 	}
 }
@@ -63,7 +63,7 @@ func TestEvaluate_Nitrate40AndGreenWater_MatchesAlgaeBloomV1(t *testing.T) {
 		Symptoms:   []string{"green_water"},
 	}
 	matches := rs.Evaluate(in)
-	if len(matches) == 0 || matches[0].RuleID != "algae_bloom_v1" {
+	if len(matches) == 0 || matches[0].RuleID != "algae_excess_v1" {
 		t.Fatalf("matches=%v", matches)
 	}
 }
@@ -75,13 +75,13 @@ func TestEvaluate_OxygenMgLLte55_MatchesOxygenRiskV1(t *testing.T) {
 	matches := rs.Evaluate(in)
 	var got bool
 	for _, m := range matches {
-		if m.RuleID == "oxygen_risk_v1" {
+		if m.RuleID == "oxygen_deficiency_v1" {
 			got = true
 			break
 		}
 	}
 	if !got {
-		t.Fatalf("expected oxygen_risk_v1 among matches, got %v", matches)
+		t.Fatalf("expected oxygen_deficiency_v1 among matches, got %v", matches)
 	}
 }
 
@@ -92,13 +92,13 @@ func TestEvaluate_CO2MgLGte30_MatchesCO2PhKhRiskV1(t *testing.T) {
 	matches := rs.Evaluate(in)
 	var got bool
 	for _, m := range matches {
-		if m.RuleID == "co2_ph_kh_risk_v1" {
+		if m.RuleID == "co2_overdose_v1" {
 			got = true
 			break
 		}
 	}
 	if !got {
-		t.Fatalf("expected co2_ph_kh_risk_v1 among matches, got %v", matches)
+		t.Fatalf("expected co2_overdose_v1 among matches, got %v", matches)
 	}
 }
 
@@ -112,8 +112,8 @@ func TestEvaluate_PHKHWithoutCO2Symptom_DoesNotMatchCo2PhKhRiskV1(t *testing.T) 
 		Symptoms: nil,
 	}
 	for _, m := range rs.Evaluate(in) {
-		if m.RuleID == "co2_ph_kh_risk_v1" {
-			t.Fatalf("co2_ph_kh_risk_v1 should not match without CO2-related symptom / CO2 measurement, got match: %+v", m)
+		if m.RuleID == "co2_overdose_v1" {
+			t.Fatalf("co2_overdose_v1 should not match without CO2-related symptom / CO2 measurement, got match: %+v", m)
 		}
 	}
 }
@@ -140,8 +140,8 @@ func TestEvaluate_MissingNumericField_ConditionFalseNoPanic(t *testing.T) {
 	}()
 	in := EvalInput{Symptoms: []string{"green_water"}}
 	for _, m := range rs.Evaluate(in) {
-		if m.RuleID == "nitrite_risk_v1" {
-			t.Fatalf("nitrite_risk_v1 should not match without nitrite_mg_l")
+		if m.RuleID == "nitrite_poisoning_v1" {
+			t.Fatalf("nitrite_poisoning_v1 should not match without nitrite_mg_l")
 		}
 	}
 }

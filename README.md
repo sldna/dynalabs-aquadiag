@@ -150,7 +150,10 @@ Jede `/v1/diagnose`-Antwort enthält **immer** die folgenden Top-Level-Felder:
 - `top_diagnosis` (Objekt bei Treffer, sonst `null`)
 - `diagnoses` (immer ein Array; leer wenn kein Treffer)
 - `matched_rules` (immer ein Array; leer wenn kein Treffer)
+- `excluded_rules` (immer ein Array; Einträge wenn eine Regel ihre Hauptbedingung erfüllte, aber über `exclude_if` oder `exclude_symptoms` verworfen wurde)
 - `meta` (Objekt mit `rule_engine_version`, `evaluated_rules`, `matched_count`, `generated_at` (RFC3339) sowie den Persistenz-IDs `diagnosis_id`, `water_test_id`, `tank_id`)
+
+**Erklärbarkeit (deterministisch, ohne KI):** Jedes Element in `diagnoses` kann optional enthalten: `category`, `tags`, `matched_conditions`, `matched_symptoms`, `matched_water_values`, `score_breakdown`, sowie bei knappen Top-Treffern `uncertainty_note_de`. Die End-Konfidenz je Regel setzt sich aus `confidence_base` (Fallback: `confidence`) plus gedeckelten Symptom- und Wasser-Zuschlägen aus der YAML zusammen.
 
 **Beispiel: `status: "matched"`**
 
@@ -158,11 +161,13 @@ Jede `/v1/diagnose`-Antwort enthält **immer** die folgenden Top-Level-Felder:
 {
   "status": "matched",
   "top_diagnosis": {
-    "rule_id": "nitrite_risk_v1",
-    "name": "Nitritbelastung",
-    "diagnosis_type": "nitrite_risk",
-    "severity": "high",
-    "confidence": 0.9,
+    "rule_id": "nitrite_poisoning_v1",
+    "name": "Nitrit stark erhöht (Vergiftungsgefahr)",
+    "category": "water",
+    "tags": ["nitrite", "toxicity"],
+    "diagnosis_type": "nitrite_poisoning",
+    "severity": "critical",
+    "confidence": 0.86,
     "summary_de": "...",
     "reasoning_de": "...",
     "actions_now": ["..."],
@@ -170,15 +175,29 @@ Jede `/v1/diagnose`-Antwort enthält **immer** die folgenden Top-Level-Felder:
     "avoid": ["..."],
     "follow_up_questions_de": ["..."],
     "safety_note_de": "...",
-    "facts": ["..."]
+    "facts": ["..."],
+    "matched_conditions": ["Nitrit über dem Schwellenwert (Zuschlag +0.14)", "Nitrit: 0.5 mg/l"],
+    "matched_symptoms": [],
+    "matched_water_values": [
+      { "field": "nitrite_mg_l", "label_de": "Nitrit", "value": 0.5, "unit": "mg/l" }
+    ],
+    "score_breakdown": {
+      "base": 0.72,
+      "symptom_bonuses": {},
+      "water_bonuses": { "nitrite_mg_l_boost": 0.14 },
+      "symptom_subtotal": 0,
+      "water_subtotal": 0.14,
+      "capped_total": 0.86
+    }
   },
   "diagnoses": [
-    { "rule_id": "nitrite_risk_v1", "confidence": 0.9, "...": "..." }
+    { "rule_id": "nitrite_poisoning_v1", "confidence": 0.86 }
   ],
-  "matched_rules": ["nitrite_risk_v1"],
+  "matched_rules": ["nitrite_poisoning_v1"],
+  "excluded_rules": [],
   "meta": {
     "rule_engine_version": "1",
-    "evaluated_rules": 5,
+    "evaluated_rules": 20,
     "matched_count": 1,
     "generated_at": "2026-05-08T12:00:00Z",
     "diagnosis_id": 42,
@@ -196,9 +215,10 @@ Jede `/v1/diagnose`-Antwort enthält **immer** die folgenden Top-Level-Felder:
   "top_diagnosis": null,
   "diagnoses": [],
   "matched_rules": [],
+  "excluded_rules": [],
   "meta": {
     "rule_engine_version": "1",
-    "evaluated_rules": 5,
+    "evaluated_rules": 20,
     "matched_count": 0,
     "generated_at": "2026-05-08T12:00:00Z",
     "diagnosis_id": 43,
@@ -208,7 +228,9 @@ Jede `/v1/diagnose`-Antwort enthält **immer** die folgenden Top-Level-Felder:
 }
 ```
 
-Garantien: `diagnoses` und `matched_rules` sind nie `null`, sondern leere Arrays bei `status: "unknown"`. `top_diagnosis` ist exakt `null` bei `unknown` und sonst gleich `diagnoses[0]` (absteigend nach `confidence` sortiert). `meta.generated_at` ist RFC3339.
+Garantien: `diagnoses`, `matched_rules` und `excluded_rules` sind nie `null`, sondern leere Arrays wenn nichts zutrifft. `top_diagnosis` ist exakt `null` bei `unknown` und sonst gleich `diagnoses[0]` (absteigend nach berechneter `confidence` sortiert). `meta.generated_at` ist RFC3339.
+
+**Regel-YAML (Auszug M3):** Zusätzlich zu `when` unterstützen Regeln optional `category`, `tags`, `confidence_base`, `symptom_weights`, `water_boosts` (liste aus `{ when: <numerisches Leaf>, add: <float> }`), `exclude_if` (gleiche `when`-Syntax wie die Hauptbedingung) und `exclude_symptoms` (Liste von Symptom-IDs — wenn der Nutzer eines davon meldet, wird die Regel verworfen und in `excluded_rules` gelistet). Optional `explanation_de` ergänzt den Text, falls `reasoning_de` leer ist.
 
 #### Severity-Werte
 

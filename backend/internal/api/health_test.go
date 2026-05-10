@@ -26,7 +26,7 @@ func assertResponseSchema(t *testing.T, body []byte) {
 	if err := json.Unmarshal(body, &raw); err != nil {
 		t.Fatalf("response not JSON: %v body=%s", err, string(body))
 	}
-	required := []string{"status", "top_diagnosis", "diagnoses", "matched_rules", "meta"}
+	required := []string{"status", "top_diagnosis", "diagnoses", "matched_rules", "excluded_rules", "meta"}
 	for _, k := range required {
 		if _, ok := raw[k]; !ok {
 			t.Fatalf("missing required top-level key %q in response: %s", k, string(body))
@@ -152,16 +152,16 @@ func TestDiagnose_MatchedResponse_NitriteRule(t *testing.T) {
 	if resp.Status != models.StatusMatched {
 		t.Fatalf("status=%q want %q", resp.Status, models.StatusMatched)
 	}
-	if resp.TopDiagnosis == nil || resp.TopDiagnosis.RuleID != "nitrite_risk_v1" {
+	if resp.TopDiagnosis == nil || resp.TopDiagnosis.RuleID != "nitrite_poisoning_v1" {
 		t.Fatalf("top_diagnosis=%+v", resp.TopDiagnosis)
 	}
 	if len(resp.Diagnoses) == 0 || resp.Diagnoses[0].RuleID != resp.TopDiagnosis.RuleID {
 		t.Fatal("top_diagnosis must equal diagnoses[0]")
 	}
-	if resp.Diagnoses[0].DiagnosisType != "nitrite_risk" {
+	if resp.Diagnoses[0].DiagnosisType != "nitrite_poisoning" {
 		t.Fatalf("diagnosis_type=%q", resp.Diagnoses[0].DiagnosisType)
 	}
-	if len(resp.MatchedRules) == 0 || resp.MatchedRules[0] != "nitrite_risk_v1" {
+	if len(resp.MatchedRules) == 0 || resp.MatchedRules[0] != "nitrite_poisoning_v1" {
 		t.Fatalf("matched_rules=%v", resp.MatchedRules)
 	}
 	assertStableMeta(t, resp.Meta, len(resp.Diagnoses))
@@ -219,13 +219,13 @@ func TestDiagnose_CO2MgL_MatchesCo2PhKhRiskV1(t *testing.T) {
 	if resp.Status != models.StatusMatched {
 		t.Fatalf("status=%q", resp.Status)
 	}
-	if len(resp.Diagnoses) != 1 || resp.Diagnoses[0].RuleID != "co2_ph_kh_risk_v1" {
+	if len(resp.Diagnoses) != 1 || resp.Diagnoses[0].RuleID != "co2_overdose_v1" {
 		t.Fatalf("diagnoses=%v", resp.Diagnoses)
 	}
-	if resp.TopDiagnosis == nil || resp.TopDiagnosis.RuleID != "co2_ph_kh_risk_v1" {
+	if resp.TopDiagnosis == nil || resp.TopDiagnosis.RuleID != "co2_overdose_v1" {
 		t.Fatal(resp.TopDiagnosis)
 	}
-	if !slices.Equal(resp.MatchedRules, []string{"co2_ph_kh_risk_v1"}) {
+	if !slices.Equal(resp.MatchedRules, []string{"co2_overdose_v1"}) {
 		t.Fatalf("matched_rules=%v", resp.MatchedRules)
 	}
 	assertStableMeta(t, resp.Meta, 1)
@@ -297,7 +297,7 @@ func TestDiagnose_FlatCO2MgL_Gte30_MatchesCo2PhKhRiskV1(t *testing.T) {
 	if len(resp.Diagnoses) == 0 {
 		t.Fatalf("diagnoses=%v", resp.Diagnoses)
 	}
-	if resp.TopDiagnosis == nil || resp.TopDiagnosis.RuleID != "co2_ph_kh_risk_v1" {
+	if resp.TopDiagnosis == nil || resp.TopDiagnosis.RuleID != "co2_overdose_v1" {
 		t.Fatalf("top_diagnosis=%+v diagnoses=%v", resp.TopDiagnosis, resp.Diagnoses)
 	}
 }
@@ -364,8 +364,8 @@ func TestDiagnose_FlatCO2MgL_29_9_DoesNotMatchCo2PhKhRiskV1(t *testing.T) {
 
 	// Regardless of overall status, ensure this specific rule did not match.
 	for _, d := range resp.Diagnoses {
-		if d.RuleID == "co2_ph_kh_risk_v1" {
-			t.Fatalf("co2_ph_kh_risk_v1 must not match for 29.9, diagnoses=%v", resp.Diagnoses)
+		if d.RuleID == "co2_overdose_v1" {
+			t.Fatalf("co2_overdose_v1 must not match for 29.9, diagnoses=%v", resp.Diagnoses)
 		}
 	}
 }
@@ -533,7 +533,7 @@ func TestDiagnose_MultipleMatches_CO2AndMilkyWater_TopHigherConfidence(t *testin
 		t.Fatalf("want 2 diagnoses, got %v", resp.Diagnoses)
 	}
 	ids := []string{resp.Diagnoses[0].RuleID, resp.Diagnoses[1].RuleID}
-	if !slices.Contains(ids, "bacterial_bloom_v1") || !slices.Contains(ids, "co2_ph_kh_risk_v1") {
+	if !slices.Contains(ids, "bacterial_bloom_v1") || !slices.Contains(ids, "co2_overdose_v1") {
 		t.Fatalf("ids=%v", ids)
 	}
 	if resp.Diagnoses[0].Confidence < resp.Diagnoses[1].Confidence {
@@ -545,7 +545,7 @@ func TestDiagnose_MultipleMatches_CO2AndMilkyWater_TopHigherConfidence(t *testin
 	if resp.TopDiagnosis.RuleID != "bacterial_bloom_v1" {
 		t.Fatalf("expected bacterial_bloom on top (higher confidence), got %q", resp.TopDiagnosis.RuleID)
 	}
-	wantRules := []string{"bacterial_bloom_v1", "co2_ph_kh_risk_v1"}
+	wantRules := []string{"bacterial_bloom_v1", "co2_overdose_v1"}
 	if !slices.Equal(resp.MatchedRules, wantRules) {
 		t.Fatalf("matched_rules=%v want %v", resp.MatchedRules, wantRules)
 	}
