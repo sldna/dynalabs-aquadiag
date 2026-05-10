@@ -159,13 +159,17 @@ export function DiagnosisResult({
   onRetry,
   tankSummaryLine,
   saveFollowUpAnswers,
-  onNewAnalysisWithAnswers,
+  onReanalyzeWithFollowUps,
+  reanalysisBusy = false,
+  reanalysisUpdatedNote = false,
 }: {
   result: DiagnoseAPIResponse;
   onRetry?: () => void;
   tankSummaryLine: string | null;
   saveFollowUpAnswers: (answers: Record<string, string>) => Promise<void>;
-  onNewAnalysisWithAnswers: (answers: Record<string, string>) => void;
+  onReanalyzeWithFollowUps: (answers: Record<string, string>) => Promise<void>;
+  reanalysisBusy?: boolean;
+  reanalysisUpdatedNote?: boolean;
 }) {
   const meta = "meta" in result && result.meta ? result.meta : undefined;
   const generatedAtLabel = formatDiagnosisTimestamp(meta?.generated_at);
@@ -214,12 +218,21 @@ export function DiagnosisResult({
 
   return (
     <>
-      <div className="mx-auto w-full max-w-3xl space-y-5">
+      <div className="mx-auto w-full space-y-5">
         <ResultContextHeader
           tankSummaryLine={tankSummaryLine}
           generatedAtLabel={generatedAtLabel}
           diagnosisMetaLine={diagnosisMetaLine}
         />
+
+        {reanalysisUpdatedNote ? (
+          <p
+            role="status"
+            className="rounded-lg border border-status-success/45 bg-status-success/15 px-4 py-3 text-sm font-medium text-aqua-deep"
+          >
+            Die Analyse wurde mit deinen Antworten aktualisiert.
+          </p>
+        ) : null}
 
         <HeroDiagnosisCard diagnosis={top} />
 
@@ -281,7 +294,8 @@ export function DiagnosisResult({
           diagnosisId={meta?.diagnosis_id}
           initialAnswers={result.follow_up_answers}
           onPersistAnswers={saveFollowUpAnswers}
-          onNewAnalysisWithAnswers={onNewAnalysisWithAnswers}
+          onReanalyzeWithFollowUps={onReanalyzeWithFollowUps}
+          reanalysisBusy={reanalysisBusy}
         />
 
         {aiExplanation ? (

@@ -23,3 +23,9 @@
 body {
   @apply min-h-dvh bg-aqua-soft font-sans text-aqua-deep antialiased;
 }
+
+@layer base {
+  :where(a, button, input, textarea, select, summary):focus-visible {
+    @apply outline-none ring-2 ring-aqua-blue ring-offset-2 ring-offset-aqua-soft;
+  }
+}

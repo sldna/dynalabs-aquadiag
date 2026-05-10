@@ -33,9 +33,10 @@ type promptInput struct {
 }
 
 type promptContext struct {
-	TopDiagnosis promptInput   `json:"top_diagnosis"`
-	Diagnoses    []promptInput `json:"diagnoses"`
-	MatchedRules []string      `json:"matched_rules"`
+	TopDiagnosis    promptInput                 `json:"top_diagnosis"`
+	Diagnoses       []promptInput               `json:"diagnoses"`
+	MatchedRules    []string                    `json:"matched_rules"`
+	FollowUpAnswers []models.FollowUpAnswerItem `json:"follow_up_answers,omitempty"`
 }
 
 func toPromptInput(m models.RuleMatch) promptInput {
@@ -56,11 +57,14 @@ func toPromptInput(m models.RuleMatch) promptInput {
 	}
 }
 
-func BuildUserPrompt(top models.RuleMatch, all []models.RuleMatch, matchedRules []string) (string, error) {
+func BuildUserPrompt(top models.RuleMatch, all []models.RuleMatch, matchedRules []string, followUpAnswers []models.FollowUpAnswerItem) (string, error) {
 	ctx := promptContext{
 		TopDiagnosis: toPromptInput(top),
 		Diagnoses:    make([]promptInput, 0, len(all)),
 		MatchedRules: append([]string(nil), matchedRules...),
+	}
+	if len(followUpAnswers) > 0 {
+		ctx.FollowUpAnswers = append([]models.FollowUpAnswerItem(nil), followUpAnswers...)
 	}
 	for _, m := range all {
 		ctx.Diagnoses = append(ctx.Diagnoses, toPromptInput(m))
@@ -74,6 +78,8 @@ func BuildUserPrompt(top models.RuleMatch, all []models.RuleMatch, matchedRules 
 	return fmt.Sprintf(`Erzeuge eine ruhige, präzise Erklärung in Deutsch basierend ausschließlich auf dem deterministischen Diagnose-Kontext unten.
 
 Wenn diagnoses.length > 1, dann erwähne kurz die sekundären Diagnosen in summary oder reasoning_public, ohne sie über top_diagnosis zu stellen (top_diagnosis bleibt der Fokus).
+
+Wenn follow_up_answers vorhanden und nicht leer ist: nutze die Nutzerantworten nur als zusätzlichen Kontext für summary/reasoning_public. Du änderst keine Diagnose, keine Severity, keine Confidence und erfindest keine neuen Regeln. Erwähne knapp, wenn eine Antwort die Einordnung schärft oder relativiert (ohne neue Diagnose zu behaupten).
 
 Gib NUR ein JSON-Objekt mit exakt diesen Feldern zurück:
 - summary (string)

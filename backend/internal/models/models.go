@@ -34,6 +34,13 @@ type WaterTestRecord struct {
 	CreatedAt           string   `json:"created_at"`
 }
 
+// FollowUpAnswerItem is optional user context for POST /v1/diagnose (follow-up Q&A).
+// It does not drive the rule engine unless mapped to structured fields elsewhere.
+type FollowUpAnswerItem struct {
+	Question string `json:"question"`
+	Answer   string `json:"answer"`
+}
+
 // DiagnoseRequest is the body for POST /v1/diagnose.
 type DiagnoseRequest struct {
 	TankID *int64 `json:"tank_id"`
@@ -43,6 +50,9 @@ type DiagnoseRequest struct {
 
 	Water    WaterTestInput `json:"water"`
 	Symptoms []string       `json:"symptoms"`
+
+	// FollowUpAnswers optional free-text answers to prior follow-up questions (reanalysis).
+	FollowUpAnswers []FollowUpAnswerItem `json:"follow_up_answers,omitempty"`
 }
 
 // UnmarshalJSON supports both the current shape
@@ -238,7 +248,9 @@ type DiagnosisResultRow struct {
 	MatchedRuleIDsJSON  string
 	RunnerUpJSON        string
 	ExplanationJSON     string
-	FollowUpAnswersJSON string // JSON object map[string]string; persisted column follow_up_answers_json.
+	// JSON text for column follow_up_answers_json; POST may store an array of
+	// {"question","answer"} objects; PATCH may replace with {"0":"…"} objects.
+	FollowUpAnswersJSON string
 }
 
 // DiagnoseAPIResponse is the stabilized POST /v1/diagnose response.
