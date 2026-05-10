@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { DashboardNav } from "@/components/DashboardNav";
 import { PageContainer } from "@/components/layout";
+import { DeleteWaterTestDialog } from "@/components/tanks/DeleteWaterTestDialog";
 import { serverFetchBase } from "@/lib/api-base";
 import { formatDateTimeDE } from "@/lib/date";
 import type { Tank, WaterTest } from "@/lib/types";
@@ -28,6 +29,7 @@ async function loadWaterTestDetail(
 ): Promise<LoadResult> {
   const tankNum = Number(tankIdStr);
   const wtNum = Number(waterTestIdStr);
+
   if (!Number.isInteger(tankNum) || tankNum < 1 || !Number.isInteger(wtNum) || wtNum < 1) {
     return { kind: "invalid_id" };
   }
@@ -51,9 +53,11 @@ async function loadWaterTestDetail(
   if (tankRes.status === 404) {
     return { kind: "not_found" };
   }
+
   if (!tankRes.ok) {
     return { kind: "error", message: `HTTP ${tankRes.status}` };
   }
+
   const tank = (await tankRes.json()) as Tank;
 
   let wtRes: Response;
@@ -73,11 +77,13 @@ async function loadWaterTestDetail(
   if (wtRes.status === 404) {
     return { kind: "not_found" };
   }
+
   if (!wtRes.ok) {
     return { kind: "error", message: `HTTP ${wtRes.status}` };
   }
 
   const test = (await wtRes.json()) as WaterTest;
+
   if (test.tank_id !== tankNum) {
     return { kind: "mismatch" };
   }
@@ -159,37 +165,45 @@ function DetailBody({ tank, test }: { tank: Tank; test: WaterTest }) {
         >
           {rows.length > 0 ? (
             <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 md:gap-x-8">
-            {rows.map((row) => (
-              <div key={row.label}>
-                <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
-                  {row.label}
-                </dt>
-                <dd className="mt-0.5 text-aqua-deep">{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : (
-          <p className="text-sm text-aqua-deep/75">
-            Keine Messwerte oder Symptome erfasst.
-          </p>
-        )}
-        {notes ? (
-          <div className="mt-4 border-t border-aqua-deep/10 pt-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
-              Notizen
+              {rows.map((row) => (
+                <div key={row.label}>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
+                    {row.label}
+                  </dt>
+                  <dd className="mt-0.5 text-aqua-deep">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="text-sm text-aqua-deep/75">
+              Keine Messwerte oder Symptome erfasst.
             </p>
-            <p className="mt-1 whitespace-pre-wrap text-sm text-aqua-deep">{notes}</p>
-          </div>
-        ) : null}
+          )}
+
+          {notes ? (
+            <div className="mt-4 border-t border-aqua-deep/10 pt-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
+                Notizen
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-aqua-deep">{notes}</p>
+            </div>
+          ) : null}
         </section>
 
-        <aside className="mt-6 lg:mt-0">
+        <aside className="mt-6 space-y-3 lg:mt-0">
           <Link
             href={`/dashboard/diagnose?tank=${tank.id}`}
             className="flex min-h-[44px] w-full items-center justify-center rounded-button bg-aqua-blue px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#168EAA]"
           >
             Neue Analyse starten
           </Link>
+
+          <div className="[&>button]:w-full">
+            <DeleteWaterTestDialog
+              waterTestId={test.id}
+              navigateAfterDeleteTo={`/dashboard/tanks/${tank.id}`}
+            />
+          </div>
         </aside>
       </div>
     </>
