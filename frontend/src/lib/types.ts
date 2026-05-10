@@ -38,15 +38,34 @@ export type WaterTestsListResponse = {
   water_tests: WaterTest[];
 };
 
+export type WaterValueSignal = {
+  field: string;
+  label_de: string;
+  value: number;
+  unit?: string;
+};
+
+export type ScoreBreakdown = {
+  base: number;
+  symptom_bonuses?: Record<string, number>;
+  water_bonuses?: Record<string, number>;
+  symptom_subtotal: number;
+  water_subtotal: number;
+  capped_total: number;
+};
+
 export type DiagnosisItem = {
   rule_id: string;
   name: string;
   diagnosis_type: string;
+  category?: string;
+  tags?: string[];
   // Severity is validated server-side at YAML load time. The string fallback
   // is only here to keep the UI defensive against a future backend that adds
   // a value before the frontend mapping is updated.
   severity: Severity | string;
   confidence: number;
+  uncertainty_note_de?: string;
   summary_de: string;
   reasoning_de: string;
   actions_now: string[];
@@ -55,6 +74,16 @@ export type DiagnosisItem = {
   follow_up_questions_de: string[];
   safety_note_de: string;
   facts: string[];
+  matched_conditions?: string[];
+  matched_symptoms?: string[];
+  matched_water_values?: WaterValueSignal[];
+  score_breakdown?: ScoreBreakdown;
+};
+
+export type ExcludedRule = {
+  rule_id: string;
+  diagnosis_type?: string;
+  reason: string;
 };
 
 export type FollowUpAnswerPair = {
@@ -90,6 +119,7 @@ export type DiagnoseMatchedResponse = {
   top_diagnosis: DiagnosisItem | null;
   diagnoses: DiagnosisItem[];
   matched_rules: string[];
+  excluded_rules?: ExcludedRule[];
   ai_explanation?: AIExplanation | null;
   /** User answers to follow_up_questions_de (keys "0", "1", …); persisted via PATCH /v1/diagnoses/{id}. */
   follow_up_answers?: Record<string, string>;
@@ -103,6 +133,7 @@ export type DiagnoseUnknownResponse = {
   top_diagnosis?: DiagnosisItem | null;
   diagnoses?: DiagnosisItem[];
   matched_rules?: string[];
+  excluded_rules?: ExcludedRule[];
   ai_explanation?: AIExplanation | null;
   follow_up_answers?: Record<string, string>;
   meta?: DiagnosisMeta;

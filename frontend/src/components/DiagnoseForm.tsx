@@ -55,6 +55,49 @@ const SYMPTOM_GROUPS: SymptomGroup[] = [
       { id: "heavy_co2_dosing", label: "Viel CO2" },
     ],
   },
+  {
+    id: "disease_signs",
+    label: "Krankheitshinweise (Symptome)",
+    options: [
+      { id: "white_spots", label: "Weißpünktchen / Körnchen auf Haut" },
+      { id: "ich_like_white_grains", label: "Salz-/Zucker-Körnchen ähnlich" },
+      { id: "frayed_fins", label: "Ausgefranste Flossen" },
+      { id: "fin_damage_edges", label: "Flossen eingerissen oder Löcher" },
+      { id: "cotton_wool_growth", label: "Watteartige weiße Beläge" },
+      { id: "fuzzy_white_patches", label: "Unscharfe weiße Flecken" },
+      { id: "red_skin_patches", label: "Rötungen an Haut/Flossen" },
+      { id: "ulcers_sores", label: "Offene oder geschwürartige Stellen" },
+      { id: "flashing", label: "Reiben an Dekoration/Boden" },
+      { id: "clamped_fins", label: "Angelegte Flossen" },
+      { id: "rapid_gill_movement", label: "Sehr schnelle Kiemenarbeit" },
+      { id: "loss_of_appetite", label: "Fressunlust" },
+    ],
+  },
+  {
+    id: "tank_meta",
+    label: "Becken / Einrichtung",
+    options: [
+      { id: "new_aquarium_setup", label: "Neu eingerichtet oder stark umgebaut" },
+      { id: "frequent_small_die_offs", label: "Wiederholte kleine Fischverluste" },
+      { id: "dirty_filter_low_flow", label: "Filter stark verschmutzt / wenig Durchfluss" },
+      { id: "overstocked_suspected", label: "Vermutlich zu viele Fische" },
+      { id: "incompatible_species_mix", label: "Vermutlich unpassende Artenmischung" },
+    ],
+  },
+  {
+    id: "husbandry",
+    label: "Haltung / Stress",
+    options: [
+      { id: "hiding", label: "Starkes Verstecken" },
+      { id: "fish_chasing", label: "Aggressives Verfolgen" },
+      { id: "fin_nipping", label: "Flossenbeißen" },
+      { id: "uneaten_food_remains", label: "Liegenbleibendes Futter" },
+      { id: "heavy_feeding_habit", label: "Sehr reichliche Fütterung" },
+      { id: "new_fish_recent", label: "Neu eingesetzte Fische (kurz)" },
+      { id: "ph_crash_after_water_change", label: "pH stark verändert nach Wasserwechsel" },
+      { id: "temperature_swings", label: "Temperatur schwankt spürbar" },
+    ],
+  },
 ];
 
 function parseNonNegativeNumber(input: string): {

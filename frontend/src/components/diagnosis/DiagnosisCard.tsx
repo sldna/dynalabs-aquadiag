@@ -2,6 +2,7 @@ import type { DiagnosisItem } from "@/lib/types";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { MetaInfo } from "@/components/diagnosis/MetaInfo";
 import { diagnosisDisplayName } from "@/components/diagnosis/diagnosis-display-name";
+import { diagnosisCategoryLabelDE } from "@/lib/diagnosis-category";
 import { severityLabelDE } from "@/lib/severity";
 import type { ReactNode } from "react";
 
@@ -16,6 +17,7 @@ export function DiagnosisCard({
   emphasis = "extra",
   children,
 }: DiagnosisCardProps) {
+  const cat = diagnosisCategoryLabelDE(diagnosis.category);
   const ring =
     emphasis === "top" ? "ring-aqua-blue/35" : "ring-aqua-deep/12";
   const bg = emphasis === "top" ? "bg-white" : "bg-white";
@@ -28,6 +30,11 @@ export function DiagnosisCard({
             severity={diagnosis.severity}
             label={severityLabelDE(String(diagnosis.severity))}
           />
+          {cat ? (
+            <span className="rounded-full bg-aqua-soft px-2.5 py-0.5 text-xs font-medium text-aqua-deep ring-1 ring-aqua-deep/10">
+              {cat}
+            </span>
+          ) : null}
           <MetaInfo
             confidencePct={diagnosis.confidence * 100}
             ruleId={diagnosis.rule_id}

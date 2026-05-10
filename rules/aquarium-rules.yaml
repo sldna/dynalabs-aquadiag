@@ -1,148 +1,168 @@
 version: 1
 rules:
-  - id: nitrite_risk_v1
-    name: Nitritbelastung
-    diagnosis_type: nitrite_risk
-    severity: high
-    confidence: 0.9
+  # --- Wasser / Chemie ---
+  - id: nitrite_poisoning_v1
+    category: water
+    tags: [nitrite, toxicity]
+    name: Nitrit stark erhöht (Vergiftungsgefahr)
+    diagnosis_type: nitrite_poisoning
+    severity: critical
+    confidence: 0.88
+    confidence_base: 0.72
     summary_de: >-
-      Die Messung zeigt Nitrit – das ist für Fische belastend und sollte zeitnah gesenkt werden.
+      Nitrit ist stark erhöht oder passt zusammen mit typischen Stress-Symptomen — das ist akut gefährlich für die Fische und sollte sofort entschärft werden.
     reasoning_de: >-
-      Nitrit entsteht beim Abbau von Ammonium und ist giftig. Typische Ursachen sind
-      unzureichend gereifter Filter, Überbesatz, Überfütterung oder frische Einrichtung.
+      Nitrit hemmt den Sauerstofftransport im Blut der Fische. Häufig tritt das beim Einfahren, nach Filterstörungen oder bei Überfütterung auf.
+      Ein sehr hoher Messwert hat Priorität; Hecheln verstärkt die Einordnung.
+    explanation_de: >-
+      Die Engine gewichtet Messwerte und ausgewählte Symptome deterministisch — ohne Messung bleibt die Nitrit-Spur unsicherer.
     follow_up_questions_de:
-      - "Ist das Aquarium frisch eingerichtet oder kürzlich stark umgebaut worden?"
-      - "Wie stark ist besetzt (Fischbestand/Liter)?"
+      - "Wann wurde zuletzt ein Teilwasserwechsel gemacht und wie groß war er?"
+      - "Ist das Aquarium neu oder wurde der Filter kürzlich gereinigt oder getauscht?"
     safety_note_de: >-
-      Das ist keine ärztliche Diagnose. Bei sichtbar kranken Tieren oder bei sehr hohen Werten
-      konsultieren Sie zusätzlich eine fachkundige Anlaufstelle.
+      Bei sehr hohen Werten oder vielen betroffenen Tieren zusätzlich eine erfahrene Anlaufstelle einbeziehen — keine Medikamentenratschläge durch die App.
     when:
       any:
         - field: nitrite_mg_l
           gte: 0.25
-    actions_now:
-      - "Nicht weiter füttern oder Fütterung für 24 Stunden stark reduzieren."
-      - "Teilwasser wechseln (z. B. 20–30 %) und Bodengrund/Filter vorsichtig reinigen."
-      - "Filtermedium nicht komplett austauschen; Bakterienpopulation schonen."
-    actions_optional:
-      - "Nitrit und Ammonium in den nächsten Tagen erneut messen."
-      - "Temporär Luftpumpen-/Oberflächenbewegung erhöhen, um Gaswechsel zu verbessern."
-    avoid:
-      - "Keine großen Total-Reinigungen ohne Not und keine vollständige Filtersterilisation."
-    facts:
-      - "Nitrit ist ein zentraler Wert beim Einfahren und nach Störungen der Biofiltration."
-
-  - id: bacterial_bloom_v1
-    name: Trübung / Bakterienblüte (verdächtig)
-    diagnosis_type: bacterial_bloom
-    severity: medium
-    confidence: 0.72
-    summary_de: >-
-      Sichtbare Trübung passt häufig zu einer Bakterienblüte – oft nach Überfütterung, organischen
-      Einträgen oder stark geschwankter Biofiltration.
-    reasoning_de: >-
-      Trüb-milchige Optik ohne „Grün“ kann auf viele frei schwebende Bakterien hindeuten.
-      Parallel sollten Ammonium/Nitrit kontrolliert werden.
-    follow_up_questions_de:
-      - "Traten Fischverluste oder Fressunlust auf?"
-      - "Gibt es frisch eingeklebte Wurzeln, viel Welkfutter oder starke Mulmablagerungen?"
-    safety_note_de: >-
-      Ursachen sind vielfältig. Wiederholtes Messen und vorsichtiges Eingreifen ist meist besser als Schockmaßnahmen.
-    when:
-      any:
         - all:
+            - field: nitrite_mg_l
+              gte: 0.05
             - field: symptoms
-              contains_any: [cloudy_water, milky_water, white_haze]
-        - all:
-            - field: symptoms
-              contains_any: [bacterial_bloom]
+              contains_any: [gasping, fish_gasping_surface, labored_breathing]
+    exclude_if:
+      field: nitrite_mg_l
+      lte: 0.1
+    symptom_weights:
+      gasping: 0.12
+      fish_gasping_surface: 0.12
+      labored_breathing: 0.11
+      hiding: 0.03
+    water_boosts:
+      - when:
+          field: nitrite_mg_l
+          gte: 0.5
+        add: 0.14
+      - when:
+          field: nitrite_mg_l
+          gte: 1.0
+        add: 0.08
     actions_now:
-      - "Fütterung für 24–48 Stunden reduzieren und nur sehr sparsam weiterfüttern."
-      - "Teilwasser wechseln; sichtbare Futterreste und Mulm vorsichtig entfernen."
-      - "Filter nur bei deutlich reduziertem Durchfluss schonend in Aquariumwasser ausdrücken."
+      - "Fütterung sofort stoppen oder für 24 Stunden stark reduzieren."
+      - "Teilwasserwechsel (z. B. 25–35 %) mit temperaturangepasstem Wasser."
+      - "Oberflächenbewegung erhöhen; Filtermedium nicht komplett sterilisieren oder alles auf einmal austauschen."
     actions_optional:
-      - "Proben auf Ammonium/Nitrit/Nitrat und ggf. UV-Klärung nur nach Bedarf erwägen."
+      - "Nitrit und Ammonium täglich messen, bis der Wert stabil sinkt."
+      - "Einrichtung auf Überbesatz und Futterreste prüfen."
     avoid:
-      - "Nicht mit starken Klärchemikalien oder unkontrolliertem Massenfiltertausch überreagieren."
+      - "Keine großen Total-Reinigungen ohne klaren Plan."
+      - "Keine weiteren Fische nachsetzen, bis Nitrit zuverlässig niedrig ist."
     facts:
-      - "Organische Last und schwankende Biofiltration begünstigen Bakterienblüten."
+      - "Nitrit ist ein zentraler Indikator für die biologische Filterung."
 
-  - id: algae_bloom_v1
-    name: Algen / Grünwasser-Tendenz
-    diagnosis_type: algae_bloom
-    severity: medium
-    confidence: 0.78
-    summary_de: >-
-      Hohe Nährstoffe plus typische Algen-Symptome deuten auf eine ausgeprägte Algenentwicklung hin.
-    reasoning_de: >-
-      Nitrat ist ein häufiger Treiber; einseitig langes Licht und hohe Nährstoffe begünstigen Grünalgen
-      oder Aufwuchs auf Oberflächen.
-    follow_up_questions_de:
-      - "Wie lange brennt die Beleuchtung täglich (Stunden)?"
-      - "Gibt es direkte Sonneneinstrahlung aufs Becken?"
-    safety_note_de: >-
-      Eine rasche, harte CO2- oder Düngerdosierung ohne Kontrolle kann andere Risiken setzen – schrittweise vorgehen.
-    when:
-      all:
-        - field: nitrate_mg_l
-          gte: 40
-        - field: symptoms
-          contains_any: [green_water, algae_on_glass, algae_carpet, heavy_algae]
-    actions_now:
-      - "Beleuchtungsdauer um 1–2 Stunden reduzieren; direktes Sonnenlicht vermeiden."
-      - "Nährstoffquellen prüfen (Fütterung, Mulm) und Teilwasser strategisch tauschen."
-    actions_optional:
-      - "Nitratreste zeitversetzt testen; Pflanzenbestand stärken, damit Nährstoffe verbraucht werden."
-    avoid:
-      - "Kein gleichzeitiges 'Alles reinigen, Nährstoffe voll Dosieren' ohne Messung."
-    facts:
-      - "Algen reagieren auf Licht, Nährstoffe und Stabilität – meist braucht es mehrere Hebel gleichzeitig."
-
-  - id: oxygen_risk_v1
-    name: Sauerstoff / Atmung (verdächtig)
-    diagnosis_type: oxygen_risk
+  - id: ammonia_stress_v1
+    category: water
+    tags: [ammonia, toxicity]
+    name: Ammonium / Ammoniak-Stress
+    diagnosis_type: ammonia_stress
     severity: high
-    confidence: 0.86
+    confidence: 0.78
+    confidence_base: 0.68
     summary_de: >-
-      Gemessene niedrige O2-Sättigung oder typische 'gasping'-Symptome sind ein Warnsignal für Sauerstoffmangel.
+      Ammonium ist messbar erhöht — das belastet die Fische und deutet auf organische Last oder eine noch nicht stabile Filterung hin.
     reasoning_de: >-
-      Warmes Wasser löst weniger Gas; dichter Bestand, wenig Oberflächenbewegung oder Biofilter-Stress können die Lage verschärfen.
+      Erhöhtes Ammonium entsteht durch Futter, Abfall und unausgereifte Bakterienkultur. Bei höherem pH wird giftiges Ammoniak-Anteiligkeit relevanter — daher parallel pH beachten.
     follow_up_questions_de:
-      - "Ist die Wassertemperatur ungewöhnlich hoch?"
-      - "Ist die Wasseroberfläche wenig bewegt oder stark mit Öl/Pflanzen bedeckt?"
+      - "Wird stark gefüttert oder bleibt Futter liegen?"
+      - "Wie alt ist das Aquarium und wie oft wird gewechselt?"
     safety_note_de: >-
-      Akut atemnotbedingte Symptome können lebensbedrohlich sein – handeln Sie zügig und fragen Sie bei Bedarf fachliche Hilfe ein.
+      Dies ist eine technische Einordnung — keine veterinärmedizinische Diagnose.
+    when:
+      field: ammonium_mg_l
+      gte: 0.05
+    symptom_weights:
+      gasping: 0.09
+      fish_gasping_surface: 0.09
+      labored_breathing: 0.08
+      clamped_fins: 0.04
+    water_boosts:
+      - when:
+          field: ammonium_mg_l
+          gte: 0.2
+        add: 0.12
+    actions_now:
+      - "Fütterung reduzieren; sichtbare Futterreste entfernen."
+      - "Teilwasserwechsel und Mulmquellen schonend abbauen."
+      - "Filterfluss prüfen — nicht auswaschen mit Leitungswasser ohne Konzept."
+    actions_optional:
+      - "pH und Temperatur dokumentieren; Ammonium erneut messen."
+    avoid:
+      - "Keine plötzlichen pH-Experimente ohne Messreihe."
+    facts:
+      - "Ammonium ist oft der erste Stressindikator vor messbarem Nitrit."
+
+  - id: oxygen_deficiency_v1
+    category: water
+    tags: [oxygen, gas_exchange]
+    name: Sauerstoffmangel (verdächtig)
+    diagnosis_type: oxygen_deficiency
+    severity: high
+    confidence: 0.82
+    confidence_base: 0.74
+    summary_de: >-
+      Niedrige Sauerstoffwerte oder typisches Hecheln deuten auf zu wenig Sauerstoff im Wasser — das kann schnell kritisch werden.
+    reasoning_de: >-
+      Warmes Wasser löst weniger Gas; dichter Besatz, wenig Oberflächenbewegung oder Biofilm auf der Oberfläche verschärfen das Bild.
+    follow_up_questions_de:
+      - "Wie stark bewegt sich die Wasseroberfläche?"
+      - "Ist die Temperatur ungewöhnlich hoch?"
+    safety_note_de: >-
+      Akute Atemnot kann lebensbedrohlich sein — bei sehr betroffenen Tieren zeitnah Hilfe holen.
     when:
       any:
         - field: oxygen_mg_l
           lte: 5.5
+        - field: oxygen_saturation_pct
+          lte: 70
         - field: symptoms
           contains_any: [fish_gasping_surface, gasping, labored_breathing]
+    symptom_weights:
+      fish_gasping_surface: 0.14
+      gasping: 0.13
+      labored_breathing: 0.1
+    water_boosts:
+      - when:
+          field: oxygen_mg_l
+          lte: 4.5
+        add: 0.12
     actions_now:
-      - "Sofort Oberflächenbewegung erhöhen (Luftstein/Anströmung) und Deckel/Abdeckungen prüfen."
-      - "Temperatur senken, falls sie sehr hoch ist (vorsichtig; nicht schocken)."
+      - "Oberflächenbewegung sofort erhöhen (Luftstein/Strömung)."
+      - "Deckel/Abdeckungen prüfen; Überbesatz kurzfristig entschärfen."
+      - "Temperatur bei Überwärme vorsichtig senken."
     actions_optional:
-      - "Nachtabsenkung der Temperatur oder höherer Luftaustausch im Raum prüfen."
+      - "Sauerstoff erneut messen und Verlauf dokumentieren."
     avoid:
-      - "Keine abrupten massiven Wasserwechsel ohne Temperatur-/GH-Anpassung."
+      - "Keine riesigen kalten Schockwechsel ohne Anpassung."
     facts:
-      - "Gute Gaswechsel an der Oberfläche sind oft der schnellste Hebel bei Sauerstoffsorgen."
+      - "Oberflächenbewegung verbessert den Gasaustausch oft am schnellsten."
 
-  - id: co2_ph_kh_risk_v1
-    name: CO2 / pH–KH (verdächtig bei bepflanztem Becken)
-    diagnosis_type: co2_ph_kh_risk
+  - id: co2_overdose_v1
+    category: water
+    tags: [co2, planted_tank]
+    name: CO2-Überdosierung / CO2-pH-Risiko
+    diagnosis_type: co2_overdose
     severity: medium
-    confidence: 0.7
+    confidence: 0.74
+    confidence_base: 0.68
     summary_de: >-
-      Ein sehr niedriger pH bei noch vorhandener Karbonathärte oder sehr hoher gelöster CO2-Schätzung passt zu CO2-/pH-Risiken in bepflanzten Systemen.
+      Sehr hohes gelöstes CO2 oder typische CO2-/pH-Muster können für Fische riskant sein — besonders in stark bepflanzten Becken.
     reasoning_de: >-
-      Starkes CO2 drückt den pH; ohne Kontrolle sind starke pH-Schwankungen möglich. KH wirkt als Puffer,
-      aber die Kombination aus Mustern muss zum Setup passen.
+      CO2 drückt den pH; zu hohe Nachtwerte oder starke Schwankungen belasten Tiere. Die Einordnung ist setup-abhängig.
     follow_up_questions_de:
-      - "Wird CO2 dosiert? Wenn ja: wie wird er gesteuert (Tag-/Nacht-Zyklen)?"
-      - "Gibt es Hinweise auf starke pH-Sprünge nach Beleuchtungswechsel?"
+      - "Wird CO2 dosiert — wenn ja, wie und wann ausgeschaltet?"
+      - "Gibt es starke pH-Sprünge beim Lichtwechsel?"
     safety_note_de: >-
-      pH stark manipulieren ohne Messung kann stabil laufende Becken stören. Schrittweise vorgehen und Werte dokumentieren.
+      Große pH-Sprünge ohne Kontrolle können Stabilität zerstören — schrittweise arbeiten.
     when:
       any:
         - all:
@@ -155,21 +175,616 @@ rules:
                 - co2_related_ph_swings
                 - fish_gasping_morning
                 - heavy_co2_dosing
-
         - field: co2_mg_l
           gte: 30
-
         - field: symptoms
           contains_any:
             - co2_related_ph_swings
             - fish_gasping_morning
             - heavy_co2_dosing
+    symptom_weights:
+      fish_gasping_morning: 0.11
+      heavy_co2_dosing: 0.1
+      co2_related_ph_swings: 0.09
+    water_boosts:
+      - when:
+          field: co2_mg_l
+          gte: 40
+        add: 0.1
     actions_now:
-      - "CO2-Zufuhr und Sprudelzeit prüfen; Abends Abschalten/Drosseln testen."
-      - "pH und KH parallel messen; Extrem-Korrekturen vermeiden."
+      - "CO2-Zufuhr und Laufzeiten prüfen; nachts konsistent abschalten oder drosseln."
+      - "pH und KH parallel messen."
     actions_optional:
-      - "Oberflächenwelligkeit nachts leicht erhöhen, um CO2-Entgasung zu unterstützen."
+      - "Leichte Oberflächenbewegung nachts kann CO2 abbauen — ohne extremes Sprudeln."
     avoid:
-      - "Keine großen pH-Sprünge durch Pulver/Puffer ohne Rezept und Kontrolle."
+      - "Keine großen Puffer-Kurven ohne Rezept und Folgemessung."
     facts:
-      - "In Aquarium und Aquascaping ist das Zusammenspiel CO2–pH–KH zentral, aber setup-abhängig."
+      - "CO2, pH und KH hängen zusammen — Messung vor großen Eingriffen."
+
+  - id: ph_shock_v1
+    category: water
+    tags: [ph, stability]
+    name: pH-Schock / extreme Säure oder Base
+    diagnosis_type: ph_shock
+    severity: high
+    confidence: 0.72
+    confidence_base: 0.64
+    summary_de: >-
+      Der pH liegt außerhalb eines für die meisten Süßwasserarten tragbaren Bereichs oder es gibt Hinweise auf einen plötzlichen Wechsel.
+    reasoning_de: >-
+      Extreme pH-Werte und schnelle Änderungen stressen Schleimhaut und Regulation. Karbonathärte beeinflusst die Stabilität stark.
+    follow_up_questions_de:
+      - "Gab es kürzlich große Wasserwechsel oder neue Dekoration?"
+      - "Welche Ziel-pH-Werte sind für die Besatzart üblich?"
+    safety_note_de: >-
+      Starke Korrekturen ohne Verlauf können mehr schaden als nutzen.
+    when:
+      any:
+        - field: ph
+          lte: 6.0
+        - field: ph
+          gte: 8.5
+        - field: symptoms
+          contains_any: [ph_crash_after_water_change]
+    symptom_weights:
+      ph_crash_after_water_change: 0.14
+      clamped_fins: 0.05
+      hiding: 0.04
+    actions_now:
+      - "Keine Panikkorrekturen: Ursachen suchen (Quelle Wasser, Dekoration, Dosierung)."
+      - "Teilweise anpassen und mehrfach messen statt eines großen Sprungs."
+    actions_optional:
+      - "KH-Verlauf dokumentieren, wenn KH messbar ist."
+    avoid:
+      - "Keine Pulver-/Chemie-Mischungen ohne klare Dosierung."
+    facts:
+      - "Stabile Anpassung schlägt schnelle extreme Sprünge."
+
+  - id: temperature_stress_v1
+    category: water
+    tags: [temperature]
+    name: Temperaturstress
+    diagnosis_type: temperature_stress
+    severity: medium
+    confidence: 0.68
+    confidence_base: 0.62
+    summary_de: >-
+      Die Temperatur liegt für viele gängige Süßwasserarten ungünstig oder schwankt spürbar — das kann Immunsystem und Stoffwechsel belasten.
+    reasoning_de: >-
+      Zu kalt oder zu warm reduziert Aktivität und Verträglichkeit; schnelle Schwankungen sind oft schwerer als langsame Abweichungen.
+    follow_up_questions_de:
+      - "Wie genau ist die Temperatur stabile Tag/Nacht?"
+      - "Passt die Temperatur zur besetzten Art?"
+    safety_note_de: >-
+      Gerätedefekte oder direkte Sonne können schnell überraschen — sicherheitstechnisch mitdenken.
+    when:
+      any:
+        - field: temp_c
+          lte: 22
+        - field: temp_c
+          gte: 30
+        - field: symptoms
+          contains_any: [temperature_swings]
+    symptom_weights:
+      temperature_swings: 0.1
+      loss_of_appetite: 0.05
+    actions_now:
+      - "Heizer/Thermostat und Raumtemperatur prüfen; direkte Sonne vermeiden."
+      - "Änderungen langsam angehen."
+    actions_optional:
+      - "Zieltemperatur je nach Art notieren."
+    avoid:
+      - "Keine abrupten großen Temperatursprünge beim Wasserwechsel."
+    facts:
+      - "Konstante passende Temperatur unterstützt das Immunsystem."
+
+  # --- Krankheitsbilder (Hinweise, keine veterinäre Diagnose) ---
+  - id: ich_white_spot_v1
+    category: disease
+    tags: [parasite, ich]
+    name: Weißpünktchen-Krankheit (Ichthyophthirius, Verdacht)
+    diagnosis_type: ich_white_spot
+    severity: medium
+    confidence: 0.88
+    confidence_base: 0.82
+    summary_de: >-
+      Weißpünktchen auf Haut oder Flossen passen häufig zum klassischen Bild von Ichthyophthirius — ein sehr verbreiteter Parasit im Hobby.
+    reasoning_de: >-
+      Das Symptom ist relativ charakteristisch. Andere Ursachen (Luftblasen, Verletzungen) sind möglich, aber seltener bei gleichmäßigen Punkten.
+    follow_up_questions_de:
+      - "Seit wann bestehen die Punkte und wie viele Tiere sind betroffen?"
+      - "Gab es kürzlich Neueinfangen ohne ausreichende Adaptation?"
+    safety_note_de: >-
+      Medikation nur nach eigener Recherche oder fachlicher Beratung — die App empfiehlt keine Mittel.
+    when:
+      field: symptoms
+      contains_any: [white_spots, ich_like_white_grains]
+    symptom_weights:
+      white_spots: 0.18
+      ich_like_white_grains: 0.16
+    actions_now:
+      - "Beobachtung bündeln: Licht seitlich nutzen, Punktezählen und Fotos für Verlauf."
+      - "Temporär Stress minimieren (ruhiges Licht, weniger Eingriffe)."
+      - "Wasserwerte stabil halten; Teilwasser nach üblichem Beckenplan."
+    actions_optional:
+      - "Temperatur-Anpassungen nur im Rahmen der Art-Toleranz und mit Verlaufskontrolle erwägen."
+    avoid:
+      - "Keine wahllose Cocktail-Behandlung ohne klare Strategie."
+    facts:
+      - "Ein klares Bild über mehrere Tage hilft, Verwechslungen zu verringern."
+
+  - id: fin_rot_v1
+    category: disease
+    tags: [fins, bacterial]
+    name: Flossenfäule (Verdacht)
+    diagnosis_type: fin_rot
+    severity: medium
+    confidence: 0.84
+    confidence_base: 0.76
+    summary_de: >-
+      Ausgefranste oder zerklüftete Flossen können auf bakterielle Flossenprobleme hindeuten — Wasserqualität ist oft ein Mitverursacher.
+    reasoning_de: >-
+      Häufig verschlechtert schlechte Wasserqualität oder Verletzungen durch Revierkämpfe das Bild.
+    follow_up_questions_de:
+      - "Gibt es aggressivere Artgenossen oder enge Kanten?"
+      - "Sind Nitrit und Ammonium aktuell niedrig?"
+    safety_note_de: >-
+      Fortschreitende Entzündungen sollten fachlich eingeschätzt werden.
+    when:
+      field: symptoms
+      contains_any: [frayed_fins, fin_damage_edges]
+    symptom_weights:
+      frayed_fins: 0.2
+      fin_damage_edges: 0.14
+    water_boosts:
+      - when:
+          field: nitrite_mg_l
+          gte: 0.25
+        add: 0.08
+    actions_now:
+      - "Wasserqualität verbessern und Stress reduzieren."
+      - "Häutchen oder weiße Ränder dokumentieren — Verlauf über Tage."
+    actions_optional:
+      - "Bei mehreren Tieren Quelle für Verletzungen suchen."
+    avoid:
+      - "Keine Salz-/Medikament-Großeingriffe ohne klaren Plan."
+    facts:
+      - "Sauberes, stabiles Wasser unterstützt die Heilung oft stark."
+
+  - id: fungal_infection_v1
+    category: disease
+    tags: [fungus]
+    name: Pilzinfektion (Verdacht, watteartige Beläge)
+    diagnosis_type: fungal_infection
+    severity: medium
+    confidence: 0.78
+    confidence_base: 0.72
+    summary_de: >-
+      Watteartige weiße Beläge können pilzliche Wachstumsmuster sein — oft nach Verletzungen oder bei eingeschränkter Wasserqualität.
+    reasoning_de: >-
+      Optisch ähnliche Bilder können auch bakteriell sein; die Engine ordnet konservativ als Hinweis ein.
+    follow_up_questions_de:
+      - "Gab es sichtbare Verletzungen oder Hektik im Becken?"
+    safety_note_de: >-
+      Schnelles Verschlechtern sollte fachlich bewertet werden.
+    when:
+      field: symptoms
+      contains_any: [cotton_wool_growth, fuzzy_white_patches]
+    symptom_weights:
+      cotton_wool_growth: 0.16
+      fuzzy_white_patches: 0.12
+    actions_now:
+      - "Beläge nicht abreiben; Wasserqualität und Stress senken."
+      - "Einzelkandidaten leicht beobachten — Futter normal halten, aber nicht überfüttern."
+    actions_optional:
+      - "Isolierung nur wenn sicher machbar ohne zusätzlichen Stress."
+    avoid:
+      - "Keine aggressiven Badereien ohne Konzept."
+    facts:
+      - "Stabile Parameter helfen, sekundäre Infektionen zu vermeiden."
+
+  - id: bacterial_infection_v1
+    category: disease
+    tags: [bacterial]
+    name: Bakterielle Infektion (Verdacht)
+    diagnosis_type: bacterial_infection
+    severity: high
+    confidence: 0.74
+    confidence_base: 0.66
+    summary_de: >-
+      Rötungen, Geschwüre oder offene Stellen können bakteriell bedingt sein — oft zusammen mit belasteter Wasserqualität.
+    reasoning_de: >-
+      Höheres Ammonium oder Nitrit erhöht das Risiko für Sekundärinfektionen.
+    follow_up_questions_de:
+      - "Wie schnell verschlechtert sich der Befund?"
+      - "Sind mehrere Arten betroffen?"
+    safety_note_de: >-
+      Offene Wunden können schnell eskalieren — im Zweifel Hilfe holen.
+    when:
+      any:
+        - field: symptoms
+          contains_any: [red_skin_patches, ulcers_sores]
+        - all:
+            - field: symptoms
+              contains_any: [loss_of_appetite, clamped_fins]
+            - field: ammonium_mg_l
+              gte: 0.08
+    symptom_weights:
+      ulcers_sores: 0.18
+      red_skin_patches: 0.14
+    water_boosts:
+      - when:
+          field: nitrite_mg_l
+          gte: 0.25
+        add: 0.1
+    actions_now:
+      - "Wasserqualität priorisieren; Teilwasser und Mulm reduzieren."
+      - "Stress minimieren; Fotos für Verlauf."
+    actions_optional:
+      - "Bei zunehmenden offenen Stellen zeitnah Rat einholen."
+    avoid:
+      - "Keine Selbstmedikation ohne Diagnose-Sicherheit."
+    facts:
+      - "Viele bakterielle Bilder verbessern sich mit sauberem Wasser — manche nicht."
+
+  - id: parasite_suspected_v1
+    category: disease
+    tags: [parasite]
+    name: Parasitenverdacht (unspezifisch)
+    diagnosis_type: parasite_suspected
+    severity: medium
+    confidence: 0.62
+    confidence_base: 0.55
+    summary_de: >-
+      Reiben, angelegte Flossen und ruheloses Verhalten können auf äußere Parasiten hindeuten — aber auch auf Wasserqualität oder Revierstress.
+    reasoning_de: >-
+      Ohne klare Weißpünktchen ist die Zuordnung unsicher; die Engine bleibt deshalb vorsichtiger.
+    follow_up_questions_de:
+      - "Gibt es sichtbare Punkte oder nur Verhalten?"
+      - "Wurden neue Tiere eingesetzt?"
+    safety_note_de: >-
+      Viele Ursachen überlappen — Beobachtung und Messung schärfen das Bild.
+    when:
+      all:
+        - field: symptoms
+          contains_any: [flashing]
+        - field: symptoms
+          contains_any: [clamped_fins, rapid_gill_movement, loss_of_appetite]
+    exclude_symptoms:
+      - white_spots
+      - ich_like_white_grains
+    symptom_weights:
+      flashing: 0.12
+      clamped_fins: 0.08
+    actions_now:
+      - "Wasserwerte messen und dokumentieren."
+      - "Neuzugänge und Quarantäne-Gewohnheiten prüfen."
+    actions_optional:
+      - "Mikroskopie nur wenn vorhanden — sonst Beobachtung über mehrere Tage."
+    avoid:
+      - "Keine Panik-Kur mit vielen Mitteln gleichzeitig."
+    facts:
+      - "Stress und Parasiten können ähnliche Bilder erzeugen."
+
+  # --- Becken / Filter / Algen ---
+  - id: bacterial_bloom_v1
+    category: tank_algae
+    tags: [bloom, clarity]
+    name: Bakterienblüte / milchige Trübung (Verdacht)
+    diagnosis_type: bacterial_bloom
+    severity: medium
+    confidence: 0.76
+    confidence_base: 0.74
+    summary_de: >-
+      Milchige Trübung passt oft zu frei schwebenden Bakterien — häufig nach organischen Einträgen oder geschwungener Biofiltration.
+    reasoning_de: >-
+      Parallel sollten Ammonium und Nitrit kontrolliert werden; das Bild kann mehrere Tage brauchen.
+    follow_up_questions_de:
+      - "Gab es kürzlich viel Futter, Welkholz oder Mulm?"
+    safety_note_de: >-
+      Zeit und Messen schlagen impulsive Großreinigungen.
+    when:
+      any:
+        - field: symptoms
+          contains_any: [cloudy_water, milky_water, white_haze]
+        - field: symptoms
+          contains_any: [bacterial_bloom]
+    symptom_weights:
+      milky_water: 0.08
+      white_haze: 0.06
+    actions_now:
+      - "Fütterung reduzieren; Teilwasser."
+      - "Filter schonend reinigen, Medium nicht komplett steril austauschen."
+    actions_optional:
+      - "UV nur erwägen, wenn Ursache und Ziel klar sind."
+    avoid:
+      - "Keine unkontrollierten Klär-Chemikalien."
+    facts:
+      - "Biofiltration braucht Zeit — Geduld ist oft Teil der Lösung."
+
+  - id: algae_excess_v1
+    category: tank_algae
+    tags: [nutrients, light]
+    name: Starkes Algenwachstum / Nährstoff-Tendenz
+    diagnosis_type: algae_excess
+    severity: medium
+    confidence: 0.78
+    confidence_base: 0.72
+    summary_de: >-
+      Hohe Nitratwerte zusammen mit typischen Algen-Symptomen deuten auf überreiche Nährstoffe und Lichtführung hin.
+    reasoning_de: >-
+      Lichtdauer, Direktlicht und Fütterung sind häufige Hebel; Pflanzen können Nährstoffe mitverbrauchen.
+    follow_up_questions_de:
+      - "Wie viele Stunden brennt das Licht?"
+      - "Trifft direkte Sonne auf das Becken?"
+    safety_note_de: >-
+      CO2- oder Dünger-Kurven ohne Messung können neue Risiken öffnen.
+    when:
+      all:
+        - field: nitrate_mg_l
+          gte: 40
+        - field: symptoms
+          contains_any: [green_water, algae_on_glass, algae_carpet, heavy_algae]
+    symptom_weights:
+      green_water: 0.1
+      heavy_algae: 0.08
+    actions_now:
+      - "Beleuchtungsfenster verkürzen; direktes Sonnenlicht vermeiden."
+      - "Fütterung und Mulm reduzieren; strategisch Teilwasser."
+    actions_optional:
+      - "Pflanzenbestand stärken oder Algenfresser erwägen — artgerecht."
+    avoid:
+      - "Nicht Nährstoffe und Licht gleichzeitig maximieren."
+    facts:
+      - "Mehrere moderate Schritte wirken oft stabiler als ein Hammerschlag."
+
+  - id: unstable_tank_v1
+    category: tank_algae
+    tags: [cycling, stability]
+    name: Instabiles / einfahrendes Becken (Verdacht)
+    diagnosis_type: unstable_tank
+    severity: medium
+    confidence: 0.66
+    confidence_base: 0.6
+    summary_de: >-
+      Mittlere Nitritwerte oder Hinweise auf eine frische Einrichtung passen zu einem noch nicht stabil laufenden System.
+    reasoning_de: >-
+      Die Biofilterpopulation braucht Zeit; parallel können Nitrit und Ammonium springen.
+    follow_up_questions_de:
+      - "Wie alt ist das Aquarium in Wochen?"
+      - "Wurden viele Tiere früh eingesetzt?"
+    safety_note_de: >-
+      Weniger Füttern und weniger Neueinfänge unterstützen die Stabilität.
+    when:
+      any:
+        - all:
+            - field: nitrite_mg_l
+              gte: 0.08
+            - field: nitrite_mg_l
+              lt: 0.25
+        - field: symptoms
+          contains_any: [new_aquarium_setup, frequent_small_die_offs]
+    symptom_weights:
+      new_aquarium_setup: 0.1
+      frequent_small_die_offs: 0.12
+    actions_now:
+      - "Sparsam füttern; Nitrit/Ammonium engmaschig messen."
+      - "Teilwasser kleiner, aber häufiger statt Schockwechsel."
+    actions_optional:
+      - "Einrichtung erst langsam besetzen."
+    avoid:
+      - "Keine Filter-Kompletttausch ohne Not."
+    facts:
+      - "Stabile Bakterienpopulation ist die Basis für gesunde Werte."
+
+  - id: overstocking_v1
+    category: tank_algae
+    tags: [stocking]
+    name: Überbesatz / zu hohe Biomasse (Verdacht)
+    diagnosis_type: overstocking
+    severity: medium
+    confidence: 0.63
+    confidence_base: 0.58
+    summary_de: >-
+      Sehr hohe Nitratwerte zusätzlich zu Hinweisen auf zu viele Fische deuten auf Überbesatz oder übermäßige Fütterung.
+    reasoning_de: >-
+      Biomasse erzeugt Last; ohne ausreichendes Volumen und Wartung steigen Nährstoffe.
+    follow_up_questions_de:
+      - "Wie viele Tiere stecken auf wie vielen Litern?"
+      - "Gibt es hinreichend Schwimmraum und Verstecke?"
+    safety_note_de: >-
+      Umfangreichere Umbauten nur mit klarem Plan.
+    when:
+      any:
+        - field: symptoms
+          contains_any: [overstocked_suspected]
+        - all:
+            - field: nitrate_mg_l
+              gte: 50
+            - field: nitrite_mg_l
+              gte: 0.05
+    symptom_weights:
+      overstocked_suspected: 0.14
+    actions_now:
+      - "Fütterung und Besatzplan kritisch prüfen."
+      - "Teilwasser und Mulm reduzieren."
+    actions_optional:
+      - "Umbau oder Abgabe erwägen, wenn Parameter dauerhaft kippen."
+    avoid:
+      - "Keine schnellen Nachkäufe zur „Entlastung“, wenn das Volumen gleich bleibt."
+    facts:
+      - "Weniger Last stabilisiert oft schneller als mehr Technik."
+
+  - id: poor_filtration_v1
+    category: tank_algae
+    tags: [filtration]
+    name: Filter / Durchfluss schwach (Verdacht)
+    diagnosis_type: poor_filtration
+    severity: medium
+    confidence: 0.61
+    confidence_base: 0.56
+    summary_de: >-
+      Sichtbar schmutzige Filtermedien oder sehr milchiges Wasser zusammen mit wenig Strömung passen zu eingeschränkter Reinigung.
+    reasoning_de: >-
+      Zu wenig Durchsatz oder stark verstopfte Medien reduzieren die Leistung.
+    follow_up_questions_de:
+      - "Wann wurde der Außen-/Innenfilter zuletzt gewartet?"
+    safety_note_de: >-
+      Filter nie komplett unter fließendes Heißwasser spülen — Bakterien sterben ab.
+    when:
+      any:
+        - field: symptoms
+          contains_any: [dirty_filter_low_flow]
+        - all:
+            - field: symptoms
+              contains_any: [milky_water, cloudy_water]
+            - field: oxygen_mg_l
+              lte: 6.0
+    symptom_weights:
+      dirty_filter_low_flow: 0.14
+    actions_now:
+      - "Durchfluss prüfen; Medien in Aquariumwasser ausquetschen statt sterilisieren."
+      - "Mechanik grob, Bakterien schonen."
+    actions_optional:
+      - "Filtergröße relativ zur Besatzlast bewerten."
+    avoid:
+      - "Keinen kompletten Medienwechsel ohne Not."
+    facts:
+      - "Sauberer Durchfluss hilft chemischer und biologischer Stabilität."
+
+  # --- Stress / Haltung ---
+  - id: territory_stress_v1
+    category: stress_husbandry
+    tags: [behavior, aggression]
+    name: Revierstress / Aggression im Becken
+    diagnosis_type: territory_stress
+    severity: medium
+    confidence: 0.64
+    confidence_base: 0.58
+    summary_de: >-
+      Verfolgen oder Flossenbeißen sind klassische Stresszeichen durch Hierarchien oder zu wenig Struktur im Becken.
+    reasoning_de: >-
+      Oft helfen mehr Verstecke, Sichtlinien brechen oder Besatz anpassen.
+    follow_up_questions_de:
+      - "Sind genug Verstecke und Linien gebrochen?"
+    safety_note_de: >-
+      Chronischer Stress schwächt das Immunsystem — Umbau ist oft besser als zu langes Abwarten.
+    when:
+      field: symptoms
+      contains_any: [fish_chasing, fin_nipping]
+    symptom_weights:
+      fin_nipping: 0.14
+      fish_chasing: 0.11
+    actions_now:
+      - "Struktur verbessern; Lichtphasen können Ruhe fördern."
+      - "Aggressor temporär abschatten oder umbesetzen — wenn machbar."
+    actions_optional:
+      - "Art-spezifische Gruppengrößen prüfen."
+    avoid:
+      - "Keine weiteren gleich dominante Tiere nachkaufen."
+    facts:
+      - "Verhalten ändert sich oft erst mit Raum und Struktur."
+
+  - id: incompatible_stocking_v1
+    category: stress_husbandry
+    tags: [stocking]
+    name: Unpassende Artenkombination (Verdacht)
+    diagnosis_type: incompatible_stocking
+    severity: medium
+    confidence: 0.58
+    confidence_base: 0.54
+    summary_de: >-
+      Gemischte Besatz-Hinweise können darauf deuten, dass Ansprüche stark divergieren — etwa Temperatur, Strömung oder Aggression.
+    reasoning_de: >-
+      Die Engine kann keine Artenlisten prüfen — der Hinweis bleibt konservativ.
+    follow_up_questions_de:
+      - "Passen Temperatur und Wasserwerte zu allen Arten?"
+    safety_note_de: >-
+      Langfristige Lösung ist oft Umbesetzung statt Kurzfrist-Flicken.
+    when:
+      field: symptoms
+      contains_any: [incompatible_species_mix]
+    symptom_weights:
+      incompatible_species_mix: 0.16
+    actions_now:
+      - "Ansprüche je Art tabellarisch gegenprüfen."
+      - "Stress-Symptome dokumentieren."
+    actions_optional:
+      - "Fachforen oder Spezialisten für konkrete Kombinationen nutzen."
+    avoid:
+      - "Keine Impulskäufe ohne Recherche."
+    facts:
+      - "Viele Probleme sind vermeidbare Kombinationsfehler."
+
+  - id: overfeeding_v1
+    category: stress_husbandry
+    tags: [feeding]
+    name: Überfütterung / Organische Überlast
+    diagnosis_type: overfeeding
+    severity: medium
+    confidence: 0.66
+    confidence_base: 0.6
+    summary_de: >-
+      Liegenbleibendes Futter oder sehr hohe Nitratwerte zusammen mit starkem Fütter-Hinweis passen zu Überfütterung.
+    reasoning_de: >-
+      Unverdauliche Reste treiben Bakterien und Nährstoffe.
+    follow_up_questions_de:
+      - "Wird mehrmals täglich großzügig gefüttert?"
+    safety_note_de: >-
+      Weniger ist oft mehr — Tiere holen Energie auch über mehrere kleine Portionen.
+    when:
+      any:
+        - field: symptoms
+          contains_any: [uneaten_food_remains, heavy_feeding_habit]
+        - all:
+            - field: nitrate_mg_l
+              gte: 40
+            - field: symptoms
+              contains_any: [heavy_feeding_habit]
+    symptom_weights:
+      uneaten_food_remains: 0.14
+      heavy_feeding_habit: 0.12
+    actions_now:
+      - "Portionen halbieren; Fütterfenster festlegen."
+      - "Mulm und Boden kontrollieren."
+    actions_optional:
+      - "Automaten neu einstellen."
+    avoid:
+      - "Kein „Noch eine Prise für alle“ ohne Beobachtung."
+    facts:
+      - "Weniger organische Last stabilisiert Nitrit/Nitrat oft spürbar."
+
+  - id: acclimation_stress_v1
+    category: stress_husbandry
+    tags: [new_fish]
+    name: Eingewöhnungsstress nach Neueinfangen
+    diagnosis_type: acclimation_stress
+    severity: medium
+    confidence: 0.65
+    confidence_base: 0.58
+    summary_de: >-
+      Frisch eingesetzte Tiere mit Stresssymptomen passen zum typischen Eingewöhnungsstress — Parameter und Tempo prüfen.
+    reasoning_de: >-
+      Schnelle Änderungen bei pH, GH oder Temperatur verschärfen das Bild häufig.
+    follow_up_questions_de:
+      - "Wie lief die Eingewöhnung (Zeit, Tropfen, Temperatur)?"
+    safety_note_de: >-
+      Ruhe im Aquarium hilft oft mehr als zusätzliche Produkte.
+    when:
+      all:
+        - field: symptoms
+          contains_any: [new_fish_recent]
+        - field: symptoms
+          contains_any: [hiding, clamped_fins, gasping, labored_breathing, loss_of_appetite]
+    symptom_weights:
+      new_fish_recent: 0.12
+      clamped_fins: 0.07
+    actions_now:
+      - "Licht dämpfen; nicht fangen oder umbauen."
+      - "Wasserwerte kontrollieren — keine Überdosierung von Mitteln."
+    actions_optional:
+      - "Beobachtung über eine Woche dokumentieren."
+    avoid:
+      - "Keine weiteren Neueinfänge parallel."
+    facts:
+      - "Langsame Gewöhnung schlägt Hast."

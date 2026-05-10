@@ -8,7 +8,7 @@ func TestBuildDiagnoseResponse_EmptyUnknown(t *testing.T) {
 		EvaluatedRules:    5,
 		GeneratedAt:       "2026-05-08T12:00:00Z",
 	}
-	p := BuildDiagnoseResponse(nil, meta)
+	p := BuildDiagnoseResponse(nil, nil, meta)
 	if p.Status != StatusUnknown {
 		t.Fatalf("status=%q", p.Status)
 	}
@@ -24,11 +24,14 @@ func TestBuildDiagnoseResponse_EmptyUnknown(t *testing.T) {
 	if p.Meta.MatchedCount != 0 {
 		t.Fatalf("matched_count=%d", p.Meta.MatchedCount)
 	}
+	if p.ExcludedRules == nil || len(p.ExcludedRules) != 0 {
+		t.Fatalf("excluded_rules must be empty slice, got %#v", p.ExcludedRules)
+	}
 	if p.Meta.RuleEngineVersion != "1" || p.Meta.EvaluatedRules != 5 {
 		t.Fatalf("meta=%+v", p.Meta)
 	}
 
-	p2 := BuildDiagnoseResponse([]RuleMatch{}, meta)
+	p2 := BuildDiagnoseResponse([]RuleMatch{}, nil, meta)
 	if p2.Status != StatusUnknown {
 		t.Fatalf("status=%q", p2.Status)
 	}
@@ -44,7 +47,7 @@ func TestBuildDiagnoseResponse_TopIsDiagnosesFirst(t *testing.T) {
 		EvaluatedRules:    7,
 		GeneratedAt:       "2026-05-08T12:00:00Z",
 	}
-	p := BuildDiagnoseResponse(matches, meta)
+	p := BuildDiagnoseResponse(matches, nil, meta)
 	if p.Status != StatusMatched {
 		t.Fatalf("status=%q", p.Status)
 	}

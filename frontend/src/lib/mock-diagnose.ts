@@ -77,6 +77,7 @@ export function mockDiagnoseResponse(): DiagnoseAPIResponse {
       },
     ],
     matched_rules: ["oxygen_low_surface_gasping", "co2_too_high_ph_swings"],
+    excluded_rules: [],
     meta: {
       rule_engine_version: "mock",
       evaluated_rules: 42,

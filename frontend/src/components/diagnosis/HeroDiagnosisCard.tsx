@@ -1,6 +1,7 @@
 import type { DiagnosisItem } from "@/lib/types";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { diagnosisDisplayName } from "@/components/diagnosis/diagnosis-display-name";
+import { diagnosisCategoryLabelDE } from "@/lib/diagnosis-category";
 import { severityHeroAccent, severityLabelDE } from "@/lib/severity";
 
 function heroSummary(d: DiagnosisItem): string | null {
@@ -21,6 +22,7 @@ export function HeroDiagnosisCard({ diagnosis }: { diagnosis: DiagnosisItem }) {
       ? Math.round(Math.min(1, Math.max(0, conf)) * 100)
       : null;
   const summary = heroSummary(diagnosis);
+  const cat = diagnosisCategoryLabelDE(diagnosis.category);
 
   return (
     <article
@@ -30,6 +32,12 @@ export function HeroDiagnosisCard({ diagnosis }: { diagnosis: DiagnosisItem }) {
       <h2 className="text-xl font-semibold tracking-tight text-aqua-deep sm:text-2xl">
         {diagnosisDisplayName(diagnosis)}
       </h2>
+
+      {cat ? (
+        <p className="mt-2 inline-flex rounded-full bg-aqua-soft px-3 py-1 text-xs font-medium text-aqua-deep ring-1 ring-aqua-blue/25">
+          {cat}
+        </p>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <SeverityBadge
@@ -55,6 +63,12 @@ export function HeroDiagnosisCard({ diagnosis }: { diagnosis: DiagnosisItem }) {
           Ausführliche Einordnung findest du unter „Erklärung“.
         </p>
       )}
+
+      {diagnosis.uncertainty_note_de?.trim() ? (
+        <p className="mt-4 rounded-lg border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-sm text-aqua-deep/90">
+          {diagnosis.uncertainty_note_de.trim()}
+        </p>
+      ) : null}
     </article>
   );
 }

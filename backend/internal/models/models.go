@@ -176,10 +176,37 @@ func (w *WaterTestInput) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// WaterValueSignal is one measured parameter surfaced for explainability.
+type WaterValueSignal struct {
+	Field   string  `json:"field"`
+	LabelDE string  `json:"label_de"`
+	Value   float64 `json:"value"`
+	Unit    string  `json:"unit,omitempty"`
+}
+
+// ScoreBreakdown documents deterministic confidence composition from the rule engine.
+type ScoreBreakdown struct {
+	Base            float64            `json:"base"`
+	SymptomBonuses  map[string]float64 `json:"symptom_bonuses,omitempty"`
+	WaterBonuses    map[string]float64 `json:"water_bonuses,omitempty"`
+	SymptomSubtotal float64            `json:"symptom_subtotal"`
+	WaterSubtotal   float64            `json:"water_subtotal"`
+	CappedTotal     float64            `json:"capped_total"`
+}
+
+// ExcludedRule records a rule whose main condition matched but which was suppressed.
+type ExcludedRule struct {
+	RuleID        string `json:"rule_id"`
+	DiagnosisType string `json:"diagnosis_type,omitempty"`
+	Reason        string `json:"reason"`
+}
+
 // RuleMatch is a single rule engine outcome before persistence.
 type RuleMatch struct {
 	RuleID          string   `json:"rule_id"`
 	Name            string   `json:"name,omitempty"`
+	Category        string   `json:"category,omitempty"`
+	Tags            []string `json:"tags,omitempty"`
 	DiagnosisType   string   `json:"diagnosis_type"`
 	Confidence      float64  `json:"confidence"`
 	Severity        string   `json:"severity"`
@@ -187,19 +214,27 @@ type RuleMatch struct {
 	ActionsOptional []string `json:"actions_optional"`
 	Avoid           []string `json:"avoid"`
 	Facts           []string `json:"facts"`
-	SummaryDE       string   `json:"-"`
-	ReasoningDE     string   `json:"-"`
-	FollowUpDE      []string `json:"-"`
-	SafetyNoteDE    string   `json:"-"`
+
+	MatchedConditions  []string           `json:"matched_conditions,omitempty"`
+	MatchedSymptoms    []string           `json:"matched_symptoms,omitempty"`
+	MatchedWaterValues []WaterValueSignal `json:"matched_water_values,omitempty"`
+	ScoreBreakdown     *ScoreBreakdown    `json:"score_breakdown,omitempty"`
+	SummaryDE          string             `json:"-"`
+	ReasoningDE        string             `json:"-"`
+	FollowUpDE         []string           `json:"-"`
+	SafetyNoteDE       string             `json:"-"`
 }
 
 // DiagnosisItem is one matched rule in the API response (diagnoses[] / top_diagnosis).
 type DiagnosisItem struct {
 	RuleID            string   `json:"rule_id"`
 	Name              string   `json:"name"`
+	Category          string   `json:"category,omitempty"`
+	Tags              []string `json:"tags,omitempty"`
 	DiagnosisType     string   `json:"diagnosis_type"`
 	Severity          string   `json:"severity"`
 	Confidence        float64  `json:"confidence"`
+	UncertaintyNoteDE string   `json:"uncertainty_note_de,omitempty"`
 	SummaryDE         string   `json:"summary_de"`
 	ReasoningDE       string   `json:"reasoning_de"`
 	ActionsNow        []string `json:"actions_now"`
@@ -208,25 +243,58 @@ type DiagnosisItem struct {
 	FollowUpQuestions []string `json:"follow_up_questions_de"`
 	SafetyNoteDE      string   `json:"safety_note_de"`
 	Facts             []string `json:"facts"`
+
+	MatchedConditions  []string           `json:"matched_conditions,omitempty"`
+	MatchedSymptoms    []string           `json:"matched_symptoms,omitempty"`
+	MatchedWaterValues []WaterValueSignal `json:"matched_water_values,omitempty"`
+	ScoreBreakdown     *ScoreBreakdown    `json:"score_breakdown,omitempty"`
 }
 
 // DiagnosisItemFromRuleMatch maps engine output to API shape.
 func DiagnosisItemFromRuleMatch(m RuleMatch) DiagnosisItem {
-	return DiagnosisItem{
-		RuleID:            m.RuleID,
-		Name:              m.Name,
-		DiagnosisType:     m.DiagnosisType,
-		Severity:          m.Severity,
-		Confidence:        m.Confidence,
-		SummaryDE:         m.SummaryDE,
-		ReasoningDE:       m.ReasoningDE,
-		ActionsNow:        append([]string(nil), m.ActionsNow...),
-		ActionsOptional:   append([]string(nil), m.ActionsOptional...),
-		Avoid:             append([]string(nil), m.Avoid...),
-		FollowUpQuestions: append([]string(nil), m.FollowUpDE...),
-		SafetyNoteDE:      m.SafetyNoteDE,
-		Facts:             append([]string(nil), m.Facts...),
+	var sb *ScoreBreakdown
+	if m.ScoreBreakdown != nil {
+		cp := *m.ScoreBreakdown
+		sb = &cp
+		if sb.SymptomBonuses != nil {
+			sb.SymptomBonuses = cloneFloatMap(m.ScoreBreakdown.SymptomBonuses)
+		}
+		if sb.WaterBonuses != nil {
+			sb.WaterBonuses = cloneFloatMap(m.ScoreBreakdown.WaterBonuses)
+		}
 	}
+	return DiagnosisItem{
+		RuleID:             m.RuleID,
+		Name:               m.Name,
+		Category:           m.Category,
+		Tags:               append([]string(nil), m.Tags...),
+		DiagnosisType:      m.DiagnosisType,
+		Severity:           m.Severity,
+		Confidence:         m.Confidence,
+		SummaryDE:          m.SummaryDE,
+		ReasoningDE:        m.ReasoningDE,
+		ActionsNow:         append([]string(nil), m.ActionsNow...),
+		ActionsOptional:    append([]string(nil), m.ActionsOptional...),
+		Avoid:              append([]string(nil), m.Avoid...),
+		FollowUpQuestions:  append([]string(nil), m.FollowUpDE...),
+		SafetyNoteDE:       m.SafetyNoteDE,
+		Facts:              append([]string(nil), m.Facts...),
+		MatchedConditions:  append([]string(nil), m.MatchedConditions...),
+		MatchedSymptoms:    append([]string(nil), m.MatchedSymptoms...),
+		MatchedWaterValues: append([]WaterValueSignal(nil), m.MatchedWaterValues...),
+		ScoreBreakdown:     sb,
+	}
+}
+
+func cloneFloatMap(in map[string]float64) map[string]float64 {
+	if in == nil {
+		return nil
+	}
+	out := make(map[string]float64, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
 }
 
 // Status values for DiagnoseAPIResponse.Status.
@@ -268,6 +336,10 @@ type DiagnoseAPIResponse struct {
 	Diagnoses    []DiagnosisItem `json:"diagnoses"`
 	MatchedRules []string        `json:"matched_rules"`
 
+	// ExcludedRules lists rules that matched their main condition but were suppressed
+	// by exclude_if or exclude_symptoms (deterministic explainability).
+	ExcludedRules []ExcludedRule `json:"excluded_rules"`
+
 	// AIExplanation is optional. When AI is disabled or failed, it is null and
 	// the deterministic diagnosis fields remain the source of truth.
 	AIExplanation *AIExplanation `json:"ai_explanation"`
@@ -297,13 +369,20 @@ type DiagnosisMeta struct {
 	TankID      int64 `json:"tank_id"`
 }
 
+const uncertaintyNearDelta = 0.06
+
 // BuildDiagnoseResponse builds the API response from confidence-sorted matches and a prefilled meta.
 // MatchedCount is set from len(matches); the caller does not have to compute it.
-func BuildDiagnoseResponse(matches []RuleMatch, meta DiagnosisMeta) DiagnoseAPIResponse {
+func BuildDiagnoseResponse(matches []RuleMatch, excluded []ExcludedRule, meta DiagnosisMeta) DiagnoseAPIResponse {
 	meta.MatchedCount = len(matches)
+	ex := excluded
+	if ex == nil {
+		ex = []ExcludedRule{}
+	}
 	out := DiagnoseAPIResponse{
 		Diagnoses:     make([]DiagnosisItem, 0, len(matches)),
 		MatchedRules:  make([]string, 0, len(matches)),
+		ExcludedRules: ex,
 		AIExplanation: nil,
 		Meta:          meta,
 	}
@@ -318,6 +397,14 @@ func BuildDiagnoseResponse(matches []RuleMatch, meta DiagnosisMeta) DiagnoseAPIR
 	}
 	for _, d := range out.Diagnoses {
 		out.MatchedRules = append(out.MatchedRules, d.RuleID)
+	}
+	if len(out.Diagnoses) >= 2 {
+		gap := out.Diagnoses[0].Confidence - out.Diagnoses[1].Confidence
+		if gap >= 0 && gap < uncertaintyNearDelta {
+			out.Diagnoses[0].UncertaintyNoteDE =
+				"Die ersten Treffer liegen dicht beieinander — die Engine unterscheidet deterministisch, " +
+					"aber zusätzliche Messwerte oder Symptome können die Einordnung schärfen."
+		}
 	}
 	out.TopDiagnosis = &out.Diagnoses[0]
 	return out

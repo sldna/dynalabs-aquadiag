@@ -17,12 +17,25 @@ type Ruleset struct {
 	Rules   []Rule `yaml:"rules"`
 }
 
+// WaterBoost adds confidence when a numeric leaf condition is satisfied.
+type WaterBoost struct {
+	When When    `yaml:"when"`
+	Add  float64 `yaml:"add"`
+}
+
 // Rule is one deterministic diagnosis rule.
 type Rule struct {
-	ID        string `yaml:"id"`
-	Name      string `yaml:"name"`
-	When      When   `yaml:"when"`
-	MatchData `yaml:",inline"`
+	ID              string             `yaml:"id"`
+	Name            string             `yaml:"name"`
+	Category        string             `yaml:"category,omitempty"`
+	Tags            []string           `yaml:"tags,omitempty"`
+	When            When               `yaml:"when"`
+	ExcludeIf       *When              `yaml:"exclude_if,omitempty"`
+	ExcludeSymptoms []string           `yaml:"exclude_symptoms,omitempty"`
+	ConfidenceBase  *float64           `yaml:"confidence_base,omitempty"`
+	SymptomWeights  map[string]float64 `yaml:"symptom_weights,omitempty"`
+	WaterBoosts     []WaterBoost       `yaml:"water_boosts,omitempty"`
+	MatchData       `yaml:",inline"`
 }
 
 // MatchData is copied into models.RuleMatch on success.
@@ -38,6 +51,7 @@ type MatchData struct {
 	ReasoningDE     string   `yaml:"reasoning_de"`
 	FollowUpDE      []string `yaml:"follow_up_questions_de"`
 	SafetyNoteDE    string   `yaml:"safety_note_de"`
+	ExplanationDE   string   `yaml:"explanation_de,omitempty"`
 }
 
 // When is a nested condition tree (all / any / not) or a leaf with field + operators.
@@ -138,34 +152,86 @@ func (rs Ruleset) EvaluatedCount() int {
 	return n
 }
 
+// EvalOutcome is the full deterministic evaluation result including suppressed rules.
+type EvalOutcome struct {
+	Matches  []models.RuleMatch
+	Excluded []models.ExcludedRule
+}
+
 // Evaluate runs every rule in the ruleset, appends each match to the result slice (no early exit),
 // then sorts by confidence descending and rule_id ascending. Matches are never merged or overwritten.
 func (rs Ruleset) Evaluate(in EvalInput) []models.RuleMatch {
+	return rs.EvaluateWithMeta(in).Matches
+}
+
+// EvaluateWithMeta evaluates all rules, applies exclusion and scoring, and returns matches plus exclusions.
+func (rs Ruleset) EvaluateWithMeta(in EvalInput) EvalOutcome {
 	var out []models.RuleMatch
+	var excluded []models.ExcludedRule
 	for _, r := range rs.Rules {
 		if r.ID == "" {
 			continue
 		}
-		if evalWhen(r.When, in) {
-			out = append(out, models.RuleMatch{
-				RuleID:          r.ID,
-				Name:            strings.TrimSpace(r.Name),
-				DiagnosisType:   r.DiagnosisType,
-				Confidence:      clamp01(r.Confidence),
-				Severity:        r.Severity,
-				ActionsNow:      append([]string(nil), r.ActionsNow...),
-				ActionsOptional: append([]string(nil), r.ActionsOptional...),
-				Avoid:           append([]string(nil), r.Avoid...),
-				Facts:           append([]string(nil), r.Facts...),
-				SummaryDE:       strings.TrimSpace(r.SummaryDE),
-				ReasoningDE:     strings.TrimSpace(r.ReasoningDE),
-				FollowUpDE:      append([]string(nil), r.FollowUpDE...),
-				SafetyNoteDE:    strings.TrimSpace(r.SafetyNoteDE),
-			})
+		if !evalWhen(r.When, in) {
+			continue
 		}
+		if hasExcludedSymptomOverlap(in.Symptoms, r.ExcludeSymptoms) {
+			excluded = append(excluded, models.ExcludedRule{
+				RuleID:        r.ID,
+				DiagnosisType: r.DiagnosisType,
+				Reason:        "exclude_symptoms",
+			})
+			continue
+		}
+		if r.ExcludeIf != nil && evalWhen(*r.ExcludeIf, in) {
+			excluded = append(excluded, models.ExcludedRule{
+				RuleID:        r.ID,
+				DiagnosisType: r.DiagnosisType,
+				Reason:        "exclude_if",
+			})
+			continue
+		}
+		rm := buildRuleMatch(r, in)
+		out = append(out, rm)
 	}
 	sortMatches(out)
-	return out
+	return EvalOutcome{Matches: out, Excluded: excluded}
+}
+
+func buildRuleMatch(r Rule, in EvalInput) models.RuleMatch {
+	reasoning := strings.TrimSpace(r.ReasoningDE)
+	if reasoning == "" {
+		reasoning = strings.TrimSpace(r.ExplanationDE)
+	}
+	base := ruleBaseConfidence(r)
+	sb, matchedSyms, matchedWater, conditions := computeExtras(r, in, base)
+
+	conf := base
+	if sb != nil {
+		conf = sb.CappedTotal
+	}
+
+	return models.RuleMatch{
+		RuleID:             r.ID,
+		Name:               strings.TrimSpace(r.Name),
+		Category:           strings.TrimSpace(r.Category),
+		Tags:               append([]string(nil), r.Tags...),
+		DiagnosisType:      r.DiagnosisType,
+		Confidence:         clamp01(conf),
+		Severity:           r.Severity,
+		ActionsNow:         append([]string(nil), r.ActionsNow...),
+		ActionsOptional:    append([]string(nil), r.ActionsOptional...),
+		Avoid:              append([]string(nil), r.Avoid...),
+		Facts:              append([]string(nil), r.Facts...),
+		MatchedConditions:  conditions,
+		MatchedSymptoms:    matchedSyms,
+		MatchedWaterValues: matchedWater,
+		ScoreBreakdown:     sb,
+		SummaryDE:          strings.TrimSpace(r.SummaryDE),
+		ReasoningDE:        reasoning,
+		FollowUpDE:         append([]string(nil), r.FollowUpDE...),
+		SafetyNoteDE:       strings.TrimSpace(r.SafetyNoteDE),
+	}
 }
 
 func clamp01(x float64) float64 {

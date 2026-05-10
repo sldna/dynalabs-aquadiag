@@ -4,6 +4,8 @@ import { AvoidList } from "@/components/diagnosis/AvoidList";
 import { DiagnosisCard } from "@/components/diagnosis/DiagnosisCard";
 import { FollowUpAnswersSection } from "@/components/diagnosis/FollowUpAnswersSection";
 import { HeroDiagnosisCard } from "@/components/diagnosis/HeroDiagnosisCard";
+import { DiagnosisExplainSection } from "@/components/diagnosis/DiagnosisExplainSection";
+import { ExcludedRulesSection } from "@/components/diagnosis/ExcludedRulesSection";
 
 function pickTop(result: DiagnoseAPIResponse): DiagnosisItem | null {
   if ("top_diagnosis" in result && result.top_diagnosis) return result.top_diagnosis;
@@ -235,6 +237,12 @@ export function DiagnosisResult({
         ) : null}
 
         <HeroDiagnosisCard diagnosis={top} />
+
+        <DiagnosisExplainSection diagnosis={top} />
+
+        {"excluded_rules" in result && result.excluded_rules?.length ? (
+          <ExcludedRulesSection rules={result.excluded_rules} />
+        ) : null}
 
         <section
           className="rounded-card bg-white p-4 shadow-card ring-1 ring-aqua-deep/10"
