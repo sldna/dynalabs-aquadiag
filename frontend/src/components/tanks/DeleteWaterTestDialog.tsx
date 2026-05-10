@@ -7,13 +7,17 @@ import { browserApiBase } from "@/lib/api-base";
 
 export type DeleteWaterTestDialogProps = {
   waterTestId: number;
+  navigateAfterDeleteTo?: string;
 };
 
 type ApiError = {
   message?: string;
 };
 
-export function DeleteWaterTestDialog({ waterTestId }: DeleteWaterTestDialogProps) {
+export function DeleteWaterTestDialog({
+  waterTestId,
+  navigateAfterDeleteTo,
+}: DeleteWaterTestDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -24,30 +28,41 @@ export function DeleteWaterTestDialog({ waterTestId }: DeleteWaterTestDialogProp
 
   useEffect(() => {
     if (!open) return;
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !busy) {
         setOpen(false);
       }
     };
+
     window.addEventListener("keydown", onKey);
     cancelRef.current?.focus();
+
     return () => window.removeEventListener("keydown", onKey);
   }, [open, busy]);
 
   async function onConfirm() {
     setError(null);
     setBusy(true);
+
     try {
       const res = await fetch(`${browserApiBase()}/v1/water-tests/${waterTestId}`, {
         method: "DELETE",
       });
+
       if (!res.ok && res.status !== 204) {
         const j = (await res.json().catch(() => null)) as ApiError | null;
         setError(j?.message ?? `HTTP ${res.status}`);
         return;
       }
+
       setOpen(false);
-      router.refresh();
+
+      if (navigateAfterDeleteTo) {
+        router.push(navigateAfterDeleteTo);
+      } else {
+        router.refresh();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Netzwerkfehler");
     } finally {
@@ -74,7 +89,10 @@ export function DeleteWaterTestDialog({ waterTestId }: DeleteWaterTestDialogProp
           role="presentation"
           onClick={(e) => {
             if (busy) return;
-            if (e.target === e.currentTarget) setOpen(false);
+
+            if (e.target === e.currentTarget) {
+              setOpen(false);
+            }
           }}
         >
           <div
@@ -87,15 +105,18 @@ export function DeleteWaterTestDialog({ waterTestId }: DeleteWaterTestDialogProp
             <h2 id={titleId} className="text-base font-semibold text-aqua-deep">
               Messung wirklich löschen?
             </h2>
+
             <p id={descId} className="mt-3 text-sm text-aqua-deep/85">
               Diese Aktion kann nicht rückgängig gemacht werden. Eine vorhandene
               Diagnose zu dieser Messung wird mitgelöscht.
             </p>
+
             {error ? (
               <p className="mt-3 text-sm text-status-critical" role="alert">
                 {error}
               </p>
             ) : null}
+
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 ref={cancelRef}
@@ -106,6 +127,7 @@ export function DeleteWaterTestDialog({ waterTestId }: DeleteWaterTestDialogProp
               >
                 Abbrechen
               </button>
+
               <button
                 type="button"
                 onClick={onConfirm}
