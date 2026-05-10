@@ -39,7 +39,7 @@ export default async function DiagnosePage({
   return (
     <>
       <DashboardNav active="diagnose" />
-      <main className="mx-auto flex min-h-0 w-full max-w-[920px] flex-col gap-6 px-4 py-6">
+      <main className="mx-auto flex min-h-0 w-full flex-col gap-6 px-4 py-6 lg:px-6">
         <header className="space-y-2">
           <p className="text-sm font-medium text-aqua-deep">Dynalabs AquaDiag v1</p>
           <h1 className="text-2xl font-semibold tracking-tight text-aqua-deep">

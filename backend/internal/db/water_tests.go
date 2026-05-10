@@ -179,12 +179,16 @@ func nullStr(p *string) any {
 
 // InsertDiagnosisResult stores the diagnosis output linked to a water test.
 func InsertDiagnosisResult(ctx context.Context, q DBTX, row models.DiagnosisResultRow) (int64, error) {
+	followUps := row.FollowUpAnswersJSON
+	if followUps == "" {
+		followUps = "{}"
+	}
 	res, err := q.ExecContext(ctx, `
 INSERT INTO diagnosis_results (
   water_test_id, diagnosis_type, confidence, severity,
   actions_now_json, actions_optional_json, avoid_json, facts_json,
-  matched_rule_ids_json, runner_up_json, explanation_json
-) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+  matched_rule_ids_json, runner_up_json, explanation_json, follow_up_answers_json
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
 		row.WaterTestID,
 		row.DiagnosisType,
 		row.Confidence,
@@ -196,6 +200,7 @@ INSERT INTO diagnosis_results (
 		row.MatchedRuleIDsJSON,
 		row.RunnerUpJSON,
 		row.ExplanationJSON,
+		followUps,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("insert diagnosis: %w", err)

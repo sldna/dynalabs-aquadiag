@@ -1,7 +1,7 @@
 import type { DiagnosisItem } from "@/lib/types";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { diagnosisDisplayName } from "@/components/diagnosis/diagnosis-display-name";
-import { severityHeroAccent } from "@/lib/severity";
+import { severityHeroAccent, severityLabelDE } from "@/lib/severity";
 
 function heroSummary(d: DiagnosisItem): string | null {
   const s = d.summary_de?.trim();
@@ -32,7 +32,11 @@ export function HeroDiagnosisCard({ diagnosis }: { diagnosis: DiagnosisItem }) {
       </h2>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <SeverityBadge severity={diagnosis.severity} size="lg" />
+        <SeverityBadge
+          severity={diagnosis.severity}
+          label={severityLabelDE(String(diagnosis.severity))}
+          size="lg"
+        />
         {pct !== null ? (
           <span className="text-base font-semibold tabular-nums text-aqua-deep">
             Konfidenz {pct}%

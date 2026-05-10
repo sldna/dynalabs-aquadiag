@@ -2,6 +2,7 @@ import type { DiagnosisItem } from "@/lib/types";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { MetaInfo } from "@/components/diagnosis/MetaInfo";
 import { diagnosisDisplayName } from "@/components/diagnosis/diagnosis-display-name";
+import { severityLabelDE } from "@/lib/severity";
 import type { ReactNode } from "react";
 
 export type DiagnosisCardProps = {
@@ -23,7 +24,10 @@ export function DiagnosisCard({
     <article className={`rounded-card p-4 ring-1 shadow-card ${ring} ${bg}`}>
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <SeverityBadge severity={diagnosis.severity} />
+          <SeverityBadge
+            severity={diagnosis.severity}
+            label={severityLabelDE(String(diagnosis.severity))}
+          />
           <MetaInfo
             confidencePct={diagnosis.confidence * 100}
             ruleId={diagnosis.rule_id}

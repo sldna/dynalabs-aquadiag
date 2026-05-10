@@ -238,6 +238,7 @@ type DiagnosisResultRow struct {
 	MatchedRuleIDsJSON  string
 	RunnerUpJSON        string
 	ExplanationJSON     string
+	FollowUpAnswersJSON string // JSON object map[string]string; persisted column follow_up_answers_json.
 }
 
 // DiagnoseAPIResponse is the stabilized POST /v1/diagnose response.

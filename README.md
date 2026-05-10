@@ -1,4 +1,4 @@
-# Dynalabs AquaDiag v1
+![Logo](frontend/public/logos/README-header.png)
 
 [![Docker Compose](https://img.shields.io/badge/Orchestrierung-Docker%20Compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
 [![SQLite](https://img.shields.io/badge/Datenbank-SQLite-003B57?logo=sqlite&logoColor=white)](README.md#v1-grenzen)
@@ -102,6 +102,7 @@ docker compose up --build
   - `DELETE /v1/water-tests/{id}` → `204`, entfernt zugehörige `diagnosis_results`, dann die Messzeile (Transaktion; zusätzlich FK `ON DELETE CASCADE` ab Migration `006_foreign_keys_on_delete_cascade.sql`)
 - Diagnose: `POST …/v1/diagnose` mit Tank-Bezug und optionalem `water`: **Härte** `kh_dkh` (°dKH), `gh_dgh` (°dGH); **Ionen** `nitrite_mg_l`, `nitrate_mg_l`, `ammonium_mg_l`, `co2_mg_l` (mg/l, Testkits); **O₂** `oxygen_mg_l` (mg/l). Alte Schlüssel `*_ppm` werden beim Einlesen noch akzeptiert.
   - Optionaler Explainability-Layer: `ai_explanation` ist entweder ein JSON-Objekt oder `null`. Status unter `meta.ai_status`: `"disabled" | "ok" | "failed"`. Die deterministische Diagnose bleibt immer maßgeblich.
+  - **Rückfragen-Antworten (Persistenz):** `PATCH /v1/diagnoses/{id}` mit Body `{ "follow_up_answers": { "0": "…", "1": "…" } }` (Schlüssel = Index der Frage in `follow_up_questions_de`). Speichert nur Metadaten; **keine** erneute Regelauswertung und kein neuer AI-Lauf. Antwort `200` mit `{ "diagnosis_id", "follow_up_answers" }`. SQLite-Spalte `follow_up_answers_json` (Migration `007_follow_up_answers.sql`).
 - Web-UI: nach `/dashboard` verlinkt **Start**, **Becken** (`/dashboard/tanks`), **Diagnose** (`/dashboard/diagnose`).
 
 #### Strukturierte API-Fehler

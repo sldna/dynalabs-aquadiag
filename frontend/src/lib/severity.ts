@@ -120,6 +120,24 @@ export function severityHeroAccent(severity: string): SeverityHeroAccentClasses 
   return COLOR_TO_HERO_ACCENT[severityColor(severity)];
 }
 
+/** Short German label for badges (accessibility: status not conveyed by color alone). */
+export function severityLabelDE(severity: string): string {
+  switch (severity) {
+    case "info":
+      return "Info";
+    case "low":
+      return "Gering";
+    case "medium":
+      return "Mittel";
+    case "high":
+      return "Hoch";
+    case "critical":
+      return "Kritisch";
+    default:
+      return severity || "Unbekannt";
+  }
+}
+
 const warnedUnknown = new Set<string>();
 function warnUnknownSeverity(value: string): void {
   if (process.env.NODE_ENV === "production") return;
