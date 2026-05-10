@@ -3,16 +3,6 @@ import { SeverityBadge } from "@/components/SeverityBadge";
 import { diagnosisDisplayName } from "@/components/diagnosis/diagnosis-display-name";
 import { severityHeroAccent } from "@/lib/severity";
 
-function heroSummary(d: DiagnosisItem): string | null {
-  const s = d.summary_de?.trim();
-  if (s) return s;
-  const r = d.reasoning_de?.trim();
-  if (!r) return null;
-  const max = 320;
-  if (r.length <= max) return r;
-  return `${r.slice(0, max).trim()}…`;
-}
-
 export function HeroDiagnosisCard({ diagnosis }: { diagnosis: DiagnosisItem }) {
   const { wrap } = severityHeroAccent(diagnosis.severity);
   const conf = diagnosis.confidence;
@@ -20,7 +10,6 @@ export function HeroDiagnosisCard({ diagnosis }: { diagnosis: DiagnosisItem }) {
     typeof conf === "number" && Number.isFinite(conf)
       ? Math.round(Math.min(1, Math.max(0, conf)) * 100)
       : null;
-  const summary = heroSummary(diagnosis);
 
   return (
     <article
@@ -45,13 +34,9 @@ export function HeroDiagnosisCard({ diagnosis }: { diagnosis: DiagnosisItem }) {
         <p className="mt-2 text-xs text-aqua-deep/50">{diagnosis.rule_id.trim()}</p>
       ) : null}
 
-      {summary ? (
-        <p className="mt-4 text-sm leading-relaxed text-aqua-deep/90">{summary}</p>
-      ) : (
-        <p className="mt-4 text-sm text-aqua-deep/65">
-          Ausführliche Einordnung findest du unter „Erklärung“.
-        </p>
-      )}
+      <p className="mt-4 text-sm text-aqua-deep/65">
+        Ausführliche Einordnung findest du unter „Erklärung“ (einklappbar).
+      </p>
     </article>
   );
 }

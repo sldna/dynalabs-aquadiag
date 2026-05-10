@@ -48,7 +48,7 @@ Im UI: **Header** mit Logo und Navigation (**Start**, **Becken**, **Diagnose**);
 |              | `backend/internal/api/`       | Router, Handler, JSON-Helfer                       |
 |              | `backend/internal/{db,rules,diagnosis,ai,models}/` | Vorbereitung V1-Pipeline                           |
 | Frontend     | `frontend/src/app/`           | Next.js App Router (`/dashboard`, `/dashboard/tanks`, `/dashboard/tanks/[id]`, `/dashboard/tanks/[id]/edit`, `/dashboard/diagnose`) |
-|              | `frontend/src/components/`    | UI-Bausteine (z. B. `DashboardNav`, `DashboardFooter`, `BackendStatus`, `tanks/TankCard`, `tanks/TankEditForm`, `tanks/DeleteTankDialog`) |
+|              | `frontend/src/components/`    | UI-Bausteine (z. B. `AppShell`, `layout/*`, `DashboardFooter`, `BackendStatus`, `tanks/*`, `DiagnoseForm`, `diagnosis/*`) |
 |              | `frontend/public/logos/`      | Marken-Assets: `logo-full.svg`, `logo-icon.svg`, `favicon.svg` |
 | Regeln (YAML)| `rules/aquarium-rules.yaml` | Deterministische Regeln (optional `RULES_PATH`; siehe README) |
 | Kontext      | `.ai/`                        | Architektur, Constraints, Produktkurzbeschreibung  |
@@ -105,7 +105,7 @@ docker compose up --build
   - Antwort: `considered_context` spiegelt nur die tatsächlich gesetzten Kontextfelder wider (sonst weggelassen). Persistiert wird Kontext zusätzlich in `water_tests.diagnosis_context_json` (Migration `007_water_tests_diagnosis_context.sql`), wenn mindestens ein Feld gesetzt war.
   - Regeln: Kontext-Booleans werden in YAML über `field` + `is_true: true|false` ausgewertet. Bei erhöhtem Nitrit **und** `recent_filter_cleaning: true` greift zusätzlich `nitrite_risk_biofilter_disturbance_v1` (etwas höhere Confidence als das Basis-Nitrit-Muster ohne diese Kombination).
   - Optionaler Explainability-Layer: `ai_explanation` ist entweder ein JSON-Objekt oder `null`. Status unter `meta.ai_status`: `"disabled" | "ok" | "failed"`. Die deterministische Diagnose bleibt immer maßgeblich; die KI erhält `aquarium_context` nur zur sprachlichen Einordnung.
-- Web-UI: nach `/dashboard` verlinkt **Start**, **Becken** (`/dashboard/tanks`), **Diagnose** (`/dashboard/diagnose`).
+- Web-UI: nach `/dashboard` verlinkt **Start**, **Becken** (`/dashboard/tanks`), **Diagnose** (`/dashboard/diagnose`). Tank-Detail (`/dashboard/tanks/{id}`) mit Messhistorie und Primary-CTA „Diagnose für dieses Becken“; Messungs-Detail (`/dashboard/tanks/{id}/water-tests/{waterTestId}`) mit Löschen (Bestätigung) und Rücksprung zum Becken. Schlägt das Laden der Beckenliste auf der Diagnose-Seite fehl, erscheint ein Hinweis – „Neu anlegen“ bleibt nutzbar.
 
 #### Strukturierte API-Fehler
 

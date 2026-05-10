@@ -7,13 +7,18 @@ import { browserApiBase } from "@/lib/api-base";
 
 export type DeleteWaterTestDialogProps = {
   waterTestId: number;
+  /** Nach erfolgreichem Löschen navigieren (z. B. von der Detailseite zurück zum Becken). */
+  navigateAfterDeleteTo?: string;
 };
 
 type ApiError = {
   message?: string;
 };
 
-export function DeleteWaterTestDialog({ waterTestId }: DeleteWaterTestDialogProps) {
+export function DeleteWaterTestDialog({
+  waterTestId,
+  navigateAfterDeleteTo,
+}: DeleteWaterTestDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -47,7 +52,11 @@ export function DeleteWaterTestDialog({ waterTestId }: DeleteWaterTestDialogProp
         return;
       }
       setOpen(false);
-      router.refresh();
+      if (navigateAfterDeleteTo) {
+        router.push(navigateAfterDeleteTo);
+      } else {
+        router.refresh();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Netzwerkfehler");
     } finally {

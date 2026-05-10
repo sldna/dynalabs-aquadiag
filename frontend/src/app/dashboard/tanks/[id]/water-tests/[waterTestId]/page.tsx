@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Card, PageContainer } from "@/components/layout";
+import { DeleteWaterTestDialog } from "@/components/tanks/DeleteWaterTestDialog";
 import { serverFetchBase } from "@/lib/api-base";
 import { formatDateTimeDE } from "@/lib/date";
 import type { Tank, WaterTest } from "@/lib/types";
@@ -173,12 +174,20 @@ function DetailBody({ tank, test }: { tank: Tank; test: WaterTest }) {
         ) : null}
       </Card>
 
-      <Link
-        href={`/dashboard/diagnose?tank=${tank.id}`}
-        className="block w-full rounded-button bg-aqua-blue px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#168EAA]"
-      >
-        Neue Analyse starten
-      </Link>
+      <div className="flex flex-col gap-2">
+        <Link
+          href={`/dashboard/diagnose?tank=${tank.id}`}
+          className="block w-full rounded-button bg-aqua-blue px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#168EAA]"
+        >
+          Neue Analyse starten
+        </Link>
+        <div className="[&>button]:w-full">
+          <DeleteWaterTestDialog
+            waterTestId={test.id}
+            navigateAfterDeleteTo={`/dashboard/tanks/${tank.id}`}
+          />
+        </div>
+      </div>
     </>
   );
 }

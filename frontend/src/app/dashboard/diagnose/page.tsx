@@ -5,17 +5,37 @@ import type { Tank, TanksListResponse } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-async function loadTanks(): Promise<Tank[]> {
-  const res = await fetch(`${serverFetchBase()}/v1/tanks`, {
-    cache: "no-store",
-    next: { revalidate: 0 },
-    signal: AbortSignal.timeout(8_000),
-  });
-  if (!res.ok) {
-    return [];
+type TanksLoadResult =
+  | { ok: true; tanks: Tank[] }
+  | { ok: false; tanks: Tank[]; message: string };
+
+async function loadTanks(): Promise<TanksLoadResult> {
+  try {
+    const res = await fetch(`${serverFetchBase()}/v1/tanks`, {
+      cache: "no-store",
+      next: { revalidate: 0 },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) {
+      return {
+        ok: false,
+        tanks: [],
+        message: `Die API antwortete mit HTTP ${res.status}. Bitte Verbindung und Backend prüfen.`,
+      };
+    }
+    const data = (await res.json()) as TanksListResponse;
+    const tanks = Array.isArray(data.tanks) ? data.tanks : [];
+    return { ok: true, tanks };
+  } catch (err) {
+    return {
+      ok: false,
+      tanks: [],
+      message:
+        err instanceof Error
+          ? err.message
+          : "Netzwerkfehler beim Laden der Beckenliste.",
+    };
   }
-  const data = (await res.json()) as TanksListResponse;
-  return Array.isArray(data.tanks) ? data.tanks : [];
 }
 
 type SearchParams = Promise<{ tank?: string | string[] }>;
@@ -32,7 +52,7 @@ export default async function DiagnosePage({
 }: {
   searchParams: SearchParams;
 }) {
-  const tanks = await loadTanks();
+  const tanksResult = await loadTanks();
   const params = await searchParams;
   const initialTankId = pickTankId(params.tank);
 
@@ -48,7 +68,27 @@ export default async function DiagnosePage({
         </p>
       </header>
 
-      <DiagnoseForm initialTanks={tanks} initialTankId={initialTankId} />
+      {!tanksResult.ok ? (
+        <section
+          role="alert"
+          className="rounded-card border border-status-warning/50 bg-status-warning/15 p-4 text-sm text-aqua-deep shadow-card"
+          aria-label="Hinweis Beckenliste"
+        >
+          <p className="font-semibold text-aqua-deep">
+            Beckenliste konnte nicht geladen werden
+          </p>
+          <p className="mt-2 text-aqua-deep/90">{tanksResult.message}</p>
+          <p className="mt-2 text-aqua-deep/85">
+            Du kannst weiterhin unter „Neu anlegen“ ein Becken erfassen oder die
+            Seite später erneut laden.
+          </p>
+        </section>
+      ) : null}
+
+      <DiagnoseForm
+        initialTanks={tanksResult.tanks}
+        initialTankId={initialTankId}
+      />
     </PageContainer>
   );
 }

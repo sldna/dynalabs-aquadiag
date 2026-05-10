@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import type { WaterTest } from "@/lib/types";
 
 import { WaterTestMeasurementCard } from "./WaterTestMeasurementCard";
@@ -16,30 +14,29 @@ export function WaterMeasurementsSection({
   tankId,
   waterTests,
 }: WaterMeasurementsSectionProps) {
-  const diagnoseHref = `/dashboard/diagnose?tank=${tankId}`;
-
   return (
     <section className="space-y-3" aria-labelledby="messwerte-heading">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 id="messwerte-heading" className="text-lg font-semibold text-aqua-deep">
-          Messwerte
-        </h2>
-        <Link
-          href={diagnoseHref}
-          className="inline-flex shrink-0 items-center justify-center rounded-button bg-aqua-blue px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[#168EAA] sm:w-auto"
-        >
-          Neue Analyse starten
-        </Link>
-      </div>
+      <h2 id="messwerte-heading" className="text-lg font-semibold text-aqua-deep">
+        Messwerte &amp; Analysen
+      </h2>
+      <p className="text-sm text-aqua-deep/75">
+        Chronologie der erfassten Messungen. Eine neue Diagnose startest du oben auf
+        dieser Seite.
+      </p>
 
       {waterTests === null ? (
         <p className="rounded-card border border-status-warning/40 bg-status-warning/10 p-4 text-sm text-aqua-deep">
           Messwerte konnten nicht geladen werden.
         </p>
       ) : waterTests.length === 0 ? (
-        <p className="rounded-card border border-aqua-deep/10 bg-aqua-soft/60 p-4 text-sm text-aqua-deep/85">
-          Noch keine Messwerte vorhanden
-        </p>
+        <div className="rounded-card border border-aqua-deep/10 bg-aqua-soft/60 p-4 text-sm text-aqua-deep/85">
+          <p>Noch keine Messwerte vorhanden.</p>
+          <p className="mt-2">
+            Erfasse Symptome oder Wasserwerte über{" "}
+            <span className="font-medium text-aqua-deep">Diagnose für dieses Becken</span>{" "}
+            oben auf der Seite.
+          </p>
+        </div>
       ) : (
         <ul className="space-y-3">
           {waterTests.map((wt) => (

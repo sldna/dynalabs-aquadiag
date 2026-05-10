@@ -126,6 +126,13 @@ function TankDetail({
         <p className="text-sm text-aqua-deep/75">{tank.volume_liters} l · ID {tank.id}</p>
       </header>
 
+      <Link
+        href={`/dashboard/diagnose?tank=${tank.id}`}
+        className="block w-full rounded-button bg-aqua-blue px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#168EAA]"
+      >
+        Diagnose für dieses Becken
+      </Link>
+
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <Card as="section" aria-label="Becken-Details">
           <dl className="grid grid-cols-1 gap-3 text-sm">
