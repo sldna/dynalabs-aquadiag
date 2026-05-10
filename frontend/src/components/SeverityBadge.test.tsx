@@ -22,27 +22,27 @@ describe("SeverityBadge", () => {
   it("applies the color classes that match the severity", () => {
     const { rerender } = render(<SeverityBadge severity="info" />);
     expect(screen.getByTestId("severity-badge").className).toContain(
-      "bg-status-info/15",
+      "bg-status-info/22",
     );
 
     rerender(<SeverityBadge severity="low" />);
     expect(screen.getByTestId("severity-badge").className).toContain(
-      "bg-status-success/15",
+      "bg-status-success/22",
     );
 
     rerender(<SeverityBadge severity="medium" />);
     expect(screen.getByTestId("severity-badge").className).toContain(
-      "bg-status-warning/25",
+      "bg-status-warning/35",
     );
 
     rerender(<SeverityBadge severity="high" />);
     expect(screen.getByTestId("severity-badge").className).toContain(
-      "bg-status-alert/15",
+      "bg-status-alert/22",
     );
 
     rerender(<SeverityBadge severity="critical" />);
     expect(screen.getByTestId("severity-badge").className).toContain(
-      "bg-status-critical/15",
+      "bg-status-critical/22",
     );
   });
 

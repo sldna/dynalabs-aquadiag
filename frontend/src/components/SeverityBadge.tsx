@@ -5,6 +5,8 @@ export type SeverityBadgeProps = {
   severity: string;
   /** Optional override of the visible text. Defaults to the severity value. */
   label?: string;
+  /** Larger badge for prominent diagnosis headers. */
+  size?: "md" | "lg";
 };
 
 /**
@@ -13,14 +15,19 @@ export type SeverityBadgeProps = {
  * Color mapping is centralized in lib/severity.ts; unknown severities fall
  * back to a neutral sand badge so the UI never breaks on backend changes.
  */
-export function SeverityBadge({ severity, label }: SeverityBadgeProps) {
+export function SeverityBadge({ severity, label, size = "md" }: SeverityBadgeProps) {
   const { badge } = severityClasses(severity);
   const text = label ?? severity;
+  const sizing =
+    size === "lg"
+      ? "px-3 py-1 text-sm font-semibold"
+      : "px-2.5 py-0.5 text-xs font-semibold";
   return (
     <span
       data-testid="severity-badge"
       data-severity={severity}
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${badge}`}
+      data-size={size}
+      className={`inline-flex items-center rounded-full ${sizing} ${badge}`}
     >
       {text}
     </span>

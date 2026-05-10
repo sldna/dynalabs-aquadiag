@@ -97,7 +97,10 @@ describe("DiagnosisResult AI explanation", () => {
       />,
     );
 
-    expect(screen.getByText("AI-Erklärung")).toBeInTheDocument();
+    expect(screen.getByText("AI-Erklärung (optional)")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Die KI ergänzt die regelbasierte Analyse/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/AI summary/)).toBeInTheDocument();
   });
 });

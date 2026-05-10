@@ -1,13 +1,8 @@
 import type { DiagnosisItem } from "@/lib/types";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { MetaInfo } from "@/components/diagnosis/MetaInfo";
+import { diagnosisDisplayName } from "@/components/diagnosis/diagnosis-display-name";
 import type { ReactNode } from "react";
-
-function displayName(d: DiagnosisItem): string {
-  const n = d.name?.trim();
-  if (n) return n;
-  return d.diagnosis_type.replace(/_/g, " ");
-}
 
 export type DiagnosisCardProps = {
   diagnosis: DiagnosisItem;
@@ -35,7 +30,7 @@ export function DiagnosisCard({
           />
         </div>
         <h2 className="text-lg font-semibold tracking-tight text-aqua-deep">
-          {displayName(diagnosis)}
+          {diagnosisDisplayName(diagnosis)}
         </h2>
       </header>
       {children ? <div className="mt-4 space-y-4">{children}</div> : null}
