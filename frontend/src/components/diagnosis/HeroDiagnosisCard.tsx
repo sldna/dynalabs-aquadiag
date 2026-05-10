@@ -27,18 +27,19 @@ export function HeroDiagnosisCard({ diagnosis }: { diagnosis: DiagnosisItem }) {
       className={`rounded-card px-5 py-5 pl-6 shadow-card ring-1 ring-aqua-deep/12 ${wrap}`}
       aria-label="Hauptdiagnose"
     >
-      <h2 className="text-xl font-semibold tracking-tight text-aqua-deep sm:text-2xl">
+      <div className="flex flex-wrap items-center gap-3">
+        <SeverityBadge severity={diagnosis.severity} size="lg" />
+      </div>
+
+      <h2 className="mt-4 text-xl font-semibold tracking-tight text-aqua-deep sm:text-2xl">
         {diagnosisDisplayName(diagnosis)}
       </h2>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <SeverityBadge severity={diagnosis.severity} size="lg" />
-        {pct !== null ? (
-          <span className="text-base font-semibold tabular-nums text-aqua-deep">
-            Konfidenz {pct}%
-          </span>
-        ) : null}
-      </div>
+      {pct !== null ? (
+        <p className="mt-2 text-base font-semibold tabular-nums text-aqua-deep">
+          Konfidenz {pct}%
+        </p>
+      ) : null}
 
       {diagnosis.rule_id?.trim() ? (
         <p className="mt-2 text-xs text-aqua-deep/50">{diagnosis.rule_id.trim()}</p>

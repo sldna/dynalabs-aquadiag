@@ -17,9 +17,12 @@ rules:
       Das ist keine ärztliche Diagnose. Bei sichtbar kranken Tieren oder bei sehr hohen Werten
       konsultieren Sie zusätzlich eine fachkundige Anlaufstelle.
     when:
-      any:
+      all:
         - field: nitrite_mg_l
           gte: 0.25
+        - not:
+            field: recent_filter_cleaning
+            is_true: true
     actions_now:
       - "Nicht weiter füttern oder Fütterung für 24 Stunden stark reduzieren."
       - "Teilwasser wechseln (z. B. 20–30 %) und Bodengrund/Filter vorsichtig reinigen."
@@ -31,6 +34,41 @@ rules:
       - "Keine großen Total-Reinigungen ohne Not und keine vollständige Filtersterilisation."
     facts:
       - "Nitrit ist ein zentraler Wert beim Einfahren und nach Störungen der Biofiltration."
+
+  - id: nitrite_risk_biofilter_disturbance_v1
+    name: Nitritbelastung (nach Filtereingriff)
+    diagnosis_type: nitrite_risk
+    severity: high
+    confidence: 0.93
+    summary_de: >-
+      Die Messung zeigt Nitrit – das ist für Fische belastend und sollte zeitnah gesenkt werden.
+    reasoning_de: >-
+      Nitrit entsteht beim Abbau von Ammonium und ist giftig. Kürzliche intensive Filterreinigung
+      kann die Biofiltration kurzzeitig schwächen und Nitritspitzen begünstigen – zusätzlich zu
+      Überbesatz, Überfütterung oder einer noch nicht eingefahrenen Biologie.
+    follow_up_questions_de:
+      - "Wurde Filtermaterial stark ausgewaschen oder größenteils getauscht?"
+      - "Gab es parallel Teilwasserwechsel oder neue Tiere?"
+    safety_note_de: >-
+      Das ist keine ärztliche Diagnose. Bei sichtbar kranken Tieren oder bei sehr hohen Werten
+      konsultieren Sie zusätzlich eine fachkundige Anlaufstelle.
+    when:
+      all:
+        - field: nitrite_mg_l
+          gte: 0.25
+        - field: recent_filter_cleaning
+          is_true: true
+    actions_now:
+      - "Nicht weiter füttern oder Fütterung für 24 Stunden stark reduzieren."
+      - "Teilwasser wechseln (z. B. 20–30 %) und Bodengrund/Filter vorsichtig reinigen."
+      - "Filtermedium nicht komplett austauschen; Bakterienpopulation schonen."
+    actions_optional:
+      - "Nitrit und Ammonium in den nächsten Tagen erneut messen."
+      - "Temporär Luftpumpen-/Oberflächenbewegung erhöhen, um Gaswechsel zu verbessern."
+    avoid:
+      - "Keine großen Total-Reinigungen ohne Not und keine vollständige Filtersterilisation."
+    facts:
+      - "Nach Filtereingriffen kann die Nitrifikation kurzfristig nachlassen; Nitrit ist dann ein zentrales Kontrollsignal."
 
   - id: bacterial_bloom_v1
     name: Trübung / Bakterienblüte (verdächtig)

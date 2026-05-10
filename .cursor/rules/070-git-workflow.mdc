@@ -1,0 +1,51 @@
+---
+description: AquaDiag git workflow and repository hygiene
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# AquaDiag Git Workflow
+
+## Branching
+
+Do not work directly on:
+- `main`
+- `master`
+- `develop`
+
+Before changes:
+1. check branch
+2. check working tree
+3. create a dedicated branch if required
+
+Branch examples:
+- `feature/responsive-layout-shell`
+- `feature/cd-page-polish`
+- `fix/dashboard-width-consistency`
+- `fix/diagnosis-layout-responsive`
+- `refactor/shared-page-shell`
+- `docs/update-ai-env`
+
+## Repository Hygiene
+
+Do not commit:
+- `.env`
+- local database files
+- build artifacts
+- `node_modules`
+- temporary files
+- API keys
+- generated secrets
+
+## Commit Messages
+
+Use clear conventional messages.
+
+Examples:
+- `feat: add shared responsive page shell`
+- `fix: align dashboard with corporate design`
+- `fix: standardize diagnosis result width`
+- `refactor: reuse content card component`
+- `test: cover ai fallback response`
+- `docs: update phase 6 rules`

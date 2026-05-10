@@ -1,0 +1,88 @@
+---
+description: AquaDiag implemented AI explanation layer rules
+globs:
+  - "**/*ai*"
+  - "**/*AI*"
+  - "**/*prompt*"
+  - "**/*diagnos*"
+  - "**/*Diagnosis*"
+  - "backend/internal/ai/**/*"
+  - "backend/internal/diagnosis/**/*"
+---
+
+# AquaDiag AI Explanation Rules
+
+AI is already implemented and must remain an explanation layer.
+
+## AI Role
+
+AI may:
+- explain deterministic diagnosis results
+- summarize rule-engine output
+- phrase uncertainty clearly
+- formulate follow-up questions
+- make the result easier to understand for beginners
+
+AI must never:
+- invent diagnoses
+- change confidence
+- overwrite severity
+- replace rule-engine actions
+- invent medication or treatment steps
+- provide veterinary certainty
+- block the diagnosis pipeline
+
+## Source Of Truth
+
+The deterministic rule engine owns:
+- `diagnosis_type`
+- `confidence`
+- `severity`
+- `actions_now`
+- `actions_optional`
+- `avoid`
+- `matched_rules`
+
+AI output must be derived from structured rule-engine data.
+
+## Fallback Behavior
+
+AI must never break diagnosis.
+
+If AI fails:
+- response remains successful
+- deterministic result remains available
+- `ai_explanation = null` or equivalent fallback state is returned
+- metadata should indicate failure where available
+
+## AI Output UX
+
+In the frontend:
+- AI explanation must be secondary to deterministic actions
+- AI summary may improve readability
+- AI safety note and uncertainty note must be visible but not alarming
+- AI must not appear like a free chatbot unless explicitly implemented as such
+
+## Prompting Rules
+
+Prompts must:
+- be German by default for user-facing output
+- be calm and practical
+- include only deterministic diagnosis data
+- instruct AI not to invent additional actions
+- instruct AI to preserve uncertainty
+- instruct AI to recommend expert help for severe/unclear cases
+
+## Configuration
+
+AI must remain configurable:
+
+```env
+AI_ENABLED=true
+AI_API_KEY=
+AI_BASE_URL=
+AI_MODEL=
+AI_TIMEOUT_SECONDS=8
+```
+
+Local development must work with AI disabled.

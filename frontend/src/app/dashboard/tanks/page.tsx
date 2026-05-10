@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { TankCreateForm } from "@/components/TankCreateForm";
-import { DashboardNav } from "@/components/DashboardNav";
+import { ContentGrid, PageContainer } from "@/components/layout";
 import { TankCard } from "@/components/tanks/TankCard";
 import { DeletedBanner } from "@/components/tanks/DeletedBanner";
 import { serverFetchBase } from "@/lib/api-base";
@@ -49,48 +49,43 @@ export default async function TanksPage({
   const deletedName = Array.isArray(deletedRaw) ? deletedRaw[0] : deletedRaw;
 
   return (
-    <>
-      <DashboardNav active="tanks" />
-      <main className="mx-auto flex min-h-0 max-w-lg flex-col gap-6 px-4 py-6">
-        <header className="space-y-2">
-          <p className="text-sm font-medium text-aqua-deep">Dynalabs AquaDiag v1</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-aqua-deep">
-            Becken
-          </h1>
-          <p className="text-sm text-aqua-deep/75">
-            Becken anlegen, öffnen, bearbeiten oder zur Diagnose verwenden.
-          </p>
-        </header>
+    <PageContainer variant="wide">
+      <header className="space-y-2">
+        <p className="text-sm font-medium text-aqua-deep">Dynalabs AquaDiag v1</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-aqua-deep">
+          Becken
+        </h1>
+        <p className="text-sm text-aqua-deep/75">
+          Becken anlegen, öffnen, bearbeiten oder zur Diagnose verwenden.
+        </p>
+      </header>
 
-        {deletedName ? <DeletedBanner name={deletedName} /> : null}
+      {deletedName ? <DeletedBanner name={deletedName} /> : null}
 
-        <TankCreateForm />
+      <TankCreateForm />
 
-        <section aria-label="Beckenliste" className="space-y-3">
-          <h2 className="text-sm font-semibold text-aqua-deep">Ihre Becken</h2>
-          {result.kind === "error" ? (
-            <ErrorPanel message={result.message} />
-          ) : result.tanks.length === 0 ? (
-            <EmptyPanel />
-          ) : (
-            <ul className="grid gap-3" role="list">
-              {result.tanks.map((t) => (
-                <li key={t.id}>
-                  <TankCard tank={t} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      <section aria-label="Beckenliste" className="space-y-3">
+        <h2 className="text-sm font-semibold text-aqua-deep">Ihre Becken</h2>
+        {result.kind === "error" ? (
+          <ErrorPanel message={result.message} />
+        ) : result.tanks.length === 0 ? (
+          <EmptyPanel />
+        ) : (
+          <ContentGrid className="lg:grid-cols-2 xl:grid-cols-3">
+            {result.tanks.map((t) => (
+              <TankCard key={t.id} tank={t} />
+            ))}
+          </ContentGrid>
+        )}
+      </section>
 
-        <Link
-          href="/dashboard/diagnose"
-          className="block rounded-button bg-aqua-blue px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#168EAA]"
-        >
-          Zur Diagnose
-        </Link>
-      </main>
-    </>
+      <Link
+        href="/dashboard/diagnose"
+        className="block rounded-button bg-aqua-blue px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#168EAA]"
+      >
+        Zur Diagnose
+      </Link>
+    </PageContainer>
   );
 }
 

@@ -33,9 +33,10 @@ type promptInput struct {
 }
 
 type promptContext struct {
-	TopDiagnosis promptInput   `json:"top_diagnosis"`
-	Diagnoses    []promptInput `json:"diagnoses"`
-	MatchedRules []string      `json:"matched_rules"`
+	AquariumContext *models.DiagnosisContext `json:"aquarium_context,omitempty"`
+	TopDiagnosis    promptInput              `json:"top_diagnosis"`
+	Diagnoses       []promptInput            `json:"diagnoses"`
+	MatchedRules    []string                 `json:"matched_rules"`
 }
 
 func toPromptInput(m models.RuleMatch) promptInput {
@@ -56,11 +57,14 @@ func toPromptInput(m models.RuleMatch) promptInput {
 	}
 }
 
-func BuildUserPrompt(top models.RuleMatch, all []models.RuleMatch, matchedRules []string) (string, error) {
+func BuildUserPrompt(top models.RuleMatch, all []models.RuleMatch, matchedRules []string, dxCtx *models.DiagnosisContext) (string, error) {
 	ctx := promptContext{
 		TopDiagnosis: toPromptInput(top),
 		Diagnoses:    make([]promptInput, 0, len(all)),
 		MatchedRules: append([]string(nil), matchedRules...),
+	}
+	if dxCtx != nil && dxCtx.HasAny() {
+		ctx.AquariumContext = dxCtx
 	}
 	for _, m := range all {
 		ctx.Diagnoses = append(ctx.Diagnoses, toPromptInput(m))
@@ -72,6 +76,8 @@ func BuildUserPrompt(top models.RuleMatch, all []models.RuleMatch, matchedRules 
 	}
 
 	return fmt.Sprintf(`Erzeuge eine ruhige, präzise Erklärung in Deutsch basierend ausschließlich auf dem deterministischen Diagnose-Kontext unten.
+
+Wenn aquarium_context gesetzt ist, nutze diese strukturierten Becken-Hinweise nur zur Erläuterung und Einordnung – ohne Severity/Confidence zu ändern und ohne neue diagnostische Labels zu erfinden.
 
 Wenn diagnoses.length > 1, dann erwähne kurz die sekundären Diagnosen in summary oder reasoning_public, ohne sie über top_diagnosis zu stellen (top_diagnosis bleibt der Fokus).
 

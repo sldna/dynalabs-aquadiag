@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { DashboardNav } from "@/components/DashboardNav";
+import { Card, PageContainer } from "@/components/layout";
 import { serverFetchBase } from "@/lib/api-base";
 import { formatDateTimeDE } from "@/lib/date";
 import type { Tank, WaterTest } from "@/lib/types";
@@ -89,46 +89,43 @@ export default async function WaterTestDetailPage({ params }: RouteParams) {
   const result = await loadWaterTestDetail(id, waterTestId);
 
   return (
-    <>
-      <DashboardNav active="tanks" />
-      <main className="mx-auto flex min-h-0 max-w-lg flex-col gap-6 px-4 py-6">
-        <Link
-          href={`/dashboard/tanks/${id}`}
-          className="text-sm text-aqua-blue underline decoration-aqua-blue/40"
-        >
-          ← Zurück zum Becken
-        </Link>
+    <PageContainer>
+      <Link
+        href={`/dashboard/tanks/${id}`}
+        className="text-sm text-aqua-blue underline decoration-aqua-blue/40"
+      >
+        ← Zurück zum Becken
+      </Link>
 
-        {result.kind === "invalid_id" ? (
-          <Panel title="Ungültige Angaben">
-            <p>Die angegebenen IDs sind ungültig.</p>
-          </Panel>
-        ) : result.kind === "mismatch" ? (
-          <Panel title="Nicht gefunden">
-            <p>Diese Messung gehört nicht zu diesem Becken.</p>
-          </Panel>
-        ) : result.kind === "not_found" ? (
-          <Panel title="Nicht gefunden">
-            <p>Becken oder Messung existiert nicht (mehr).</p>
-          </Panel>
-        ) : result.kind === "error" ? (
-          <Panel title="Fehler">
-            <p>{result.message}</p>
-          </Panel>
-        ) : (
-          <DetailBody tank={result.tank} test={result.test} />
-        )}
-      </main>
-    </>
+      {result.kind === "invalid_id" ? (
+        <Panel title="Ungültige Angaben">
+          <p>Die angegebenen IDs sind ungültig.</p>
+        </Panel>
+      ) : result.kind === "mismatch" ? (
+        <Panel title="Nicht gefunden">
+          <p>Diese Messung gehört nicht zu diesem Becken.</p>
+        </Panel>
+      ) : result.kind === "not_found" ? (
+        <Panel title="Nicht gefunden">
+          <p>Becken oder Messung existiert nicht (mehr).</p>
+        </Panel>
+      ) : result.kind === "error" ? (
+        <Panel title="Fehler">
+          <p>{result.message}</p>
+        </Panel>
+      ) : (
+        <DetailBody tank={result.tank} test={result.test} />
+      )}
+    </PageContainer>
   );
 }
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card">
+    <Card as="section">
       <h1 className="text-base font-semibold text-aqua-deep">{title}</h1>
       <div className="mt-2 text-sm text-aqua-deep/85">{children}</div>
-    </section>
+    </Card>
   );
 }
 
@@ -149,12 +146,9 @@ function DetailBody({ tank, test }: { tank: Tank; test: WaterTest }) {
         </p>
       </header>
 
-      <section
-        className="rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card"
-        aria-label="Messwerte"
-      >
+      <Card as="section" aria-label="Messwerte">
         {rows.length > 0 ? (
-          <dl className="grid grid-cols-1 gap-3 text-sm">
+          <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 md:gap-x-6">
             {rows.map((row) => (
               <div key={row.label}>
                 <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
@@ -177,7 +171,7 @@ function DetailBody({ tank, test }: { tank: Tank; test: WaterTest }) {
             <p className="mt-1 whitespace-pre-wrap text-sm text-aqua-deep">{notes}</p>
           </div>
         ) : null}
-      </section>
+      </Card>
 
       <Link
         href={`/dashboard/diagnose?tank=${tank.id}`}

@@ -169,7 +169,7 @@ func (s *Service) EndpointPath() string {
 
 // Explain returns the optional AI explanation for the given deterministic diagnosis context.
 // It must never change the deterministic diagnosis; it only creates an explanation object.
-func (s *Service) Explain(ctx context.Context, top models.RuleMatch, all []models.RuleMatch, matchedRules []string) (*models.AIExplanation, error) {
+func (s *Service) Explain(ctx context.Context, top models.RuleMatch, all []models.RuleMatch, matchedRules []string, dxCtx *models.DiagnosisContext) (*models.AIExplanation, error) {
 	if s == nil || !s.cfg.Enabled {
 		return nil, &ExplainError{Code: ErrorCodeDisabled, Err: context.Canceled}
 	}
@@ -189,7 +189,7 @@ func (s *Service) Explain(ctx context.Context, top models.RuleMatch, all []model
 	cctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	userPrompt, err := BuildUserPrompt(top, all, matchedRules)
+	userPrompt, err := BuildUserPrompt(top, all, matchedRules, dxCtx)
 	if err != nil {
 		return nil, err
 	}

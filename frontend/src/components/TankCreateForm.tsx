@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Card } from "@/components/layout";
 import { browserApiBase } from "@/lib/api-base";
 
 export function TankCreateForm() {
@@ -49,11 +50,11 @@ export function TankCreateForm() {
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="flex flex-col gap-3 rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card"
-    >
-      <h2 className="text-sm font-semibold text-aqua-deep">Neues Becken</h2>
+    <Card as="section" aria-labelledby="neues-becken-heading">
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <h2 id="neues-becken-heading" className="text-sm font-semibold text-aqua-deep">
+        Neues Becken
+      </h2>
       <label className="block text-sm text-aqua-deep/90">
         Name
         <input
@@ -86,5 +87,6 @@ export function TankCreateForm() {
         {busy ? "Speichern…" : "Becken anlegen"}
       </button>
     </form>
+    </Card>
   );
 }

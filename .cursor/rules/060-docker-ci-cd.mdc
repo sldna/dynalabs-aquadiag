@@ -1,0 +1,74 @@
+---
+description: AquaDiag Docker, CI/CD and environment rules
+globs:
+  - "Dockerfile"
+  - "**/Dockerfile"
+  - "docker-compose.yml"
+  - "docker-compose.yaml"
+  - ".env.example"
+  - ".github/workflows/**/*.yml"
+  - ".github/workflows/**/*.yaml"
+---
+
+# AquaDiag Docker And CI/CD Rules
+
+AquaDiag must remain easy to run locally and safe to build in CI/CD.
+
+## Docker Compose
+
+Docker Compose must run the full app.
+
+Expected services:
+- backend
+- frontend
+
+Default ports:
+- backend: `8080`
+- frontend: `3000`
+
+Backend data:
+- persisted in Docker volume
+- SQLite default path should remain stable
+
+## Environment
+
+`.env.example` must stay current.
+
+Do not commit:
+- `.env`
+- API keys
+- local DB files
+- generated secrets
+
+Expected variables:
+- `BACKEND_PORT`
+- `FRONTEND_PORT`
+- `DATABASE_PATH`
+- `DATABASE_URL`
+- `CORS_ALLOWED_ORIGINS`
+- `NEXT_PUBLIC_API_BASE_URL`
+- `AI_ENABLED`
+- `AI_API_KEY`
+- `AI_BASE_URL`
+- `AI_MODEL`
+- `AI_TIMEOUT_SECONDS`
+
+## CI/CD
+
+CI/CD should:
+- build backend
+- run backend tests
+- build frontend
+- run frontend lint/type/build checks
+- validate Docker builds
+
+CI must not require:
+- real AI API keys
+- external database
+- cloud services
+
+## Deployment
+
+Do not make Kubernetes mandatory.
+Do not make PostgreSQL mandatory.
+Do not break local Docker Compose while improving deployment.

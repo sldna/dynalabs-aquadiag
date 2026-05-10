@@ -1,9 +1,15 @@
-import type { DiagnoseAPIResponse, DiagnosisItem } from "@/lib/types";
+import type {
+  DiagnoseAPIResponse,
+  DiagnosisContext,
+  DiagnosisItem,
+} from "@/lib/types";
+import { Card } from "@/components/layout";
 import { ActionList } from "@/components/diagnosis/ActionList";
 import { AvoidList } from "@/components/diagnosis/AvoidList";
 import { DiagnosisCard } from "@/components/diagnosis/DiagnosisCard";
 import { FollowUpQuestions } from "@/components/diagnosis/FollowUpQuestions";
 import { HeroDiagnosisCard } from "@/components/diagnosis/HeroDiagnosisCard";
+import { formatDateTimeDE } from "@/lib/date";
 
 function pickTop(result: DiagnoseAPIResponse): DiagnosisItem | null {
   if ("top_diagnosis" in result && result.top_diagnosis) return result.top_diagnosis;
@@ -14,6 +20,86 @@ function pickTop(result: DiagnoseAPIResponse): DiagnosisItem | null {
 function withoutTop(all: DiagnosisItem[], top: DiagnosisItem | null) {
   if (!top) return all;
   return all.filter((d) => d.rule_id !== top.rule_id);
+}
+
+const CONTEXT_LABELS: Record<string, string> = {
+  tank_age_days: "Becken-Alter (Tage)",
+  recent_water_change: "Kürzlich Wasser gewechselt",
+  recent_filter_cleaning: "Filter kürzlich gereinigt",
+  co2_enabled: "CO₂-Zufuhr aktiv",
+  high_stocking_density: "Hohe Besatzdichte",
+  heavy_feeding: "Kräftige Fütterung",
+  many_dead_plants: "Viele abgestorbene Pflanzen",
+  new_animals_recently: "Kürzlich neue Tiere",
+};
+
+function formatContextValue(v: unknown): string {
+  if (typeof v === "boolean") return v ? "Ja" : "Nein";
+  if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  return String(v);
+}
+
+export function ConsideredContextSection({
+  context,
+}: {
+  context: DiagnosisContext;
+}) {
+  const rows = (
+    Object.entries(context) as [string, unknown][]
+  ).filter(([, v]) => v !== undefined && v !== null);
+  if (rows.length === 0) return null;
+
+  return (
+    <Card as="section" aria-label="Berücksichtigter Kontext">
+      <h3 className="text-sm font-semibold text-aqua-deep">
+        Berücksichtigter Kontext
+      </h3>
+      <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        {rows.map(([key, val]) => (
+          <div
+            key={key}
+            className="rounded-lg bg-aqua-soft/50 px-3 py-2 ring-1 ring-aqua-deep/10"
+          >
+            <dt className="text-xs font-medium text-aqua-deep/75">
+              {CONTEXT_LABELS[key] ?? key}
+            </dt>
+            <dd className="mt-0.5 font-medium text-aqua-deep">
+              {formatContextValue(val)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </Card>
+  );
+}
+
+/** Zeitstempel und Persistenz-IDs vor Hero/Kontext (020 Diagnosis Result Layout). */
+export function DiagnosisRunMetaStrip({ result }: { result: DiagnoseAPIResponse }) {
+  if (!("meta" in result) || !result.meta) return null;
+  const m = result.meta;
+  const ts = formatDateTimeDE(m.generated_at);
+  const iso = m.generated_at?.trim();
+
+  return (
+    <Card
+      as="section"
+      aria-label="Messkontext und Zeitstempel"
+      className="border-aqua-deep/15 bg-aqua-soft/50"
+    >
+      <p className="text-xs leading-relaxed text-aqua-deep/85">
+        {ts && iso ? (
+          <>
+            Stand:{" "}
+            <time dateTime={iso}>{ts}</time>
+          </>
+        ) : null}
+        {ts ? <span aria-hidden="true"> · </span> : null}
+        <span>Becken-ID {m.tank_id}</span>
+        <span aria-hidden="true"> · </span>
+        <span>Diagnose-ID {m.diagnosis_id}</span>
+      </p>
+    </Card>
+  );
 }
 
 /** Single primary action; sticky at viewport bottom on small screens, inline after content on md+. */
@@ -36,7 +122,7 @@ export function DiagnosisResultLoading() {
     <div className="space-y-4">
       <div className="rounded-card bg-aqua-soft p-4 ring-1 ring-aqua-deep/10">
         <div className="h-4 w-28 rounded bg-aqua-deep/15" />
-        <div className="mt-3 h-8 w-4/5 max-w-md rounded bg-aqua-deep/15" />
+        <div className="mt-3 h-8 w-4/5 max-w-full rounded bg-aqua-deep/15 sm:max-w-xl" />
         <div className="mt-4 h-20 rounded bg-aqua-deep/10" />
       </div>
       <div className="rounded-card bg-aqua-soft p-4 ring-1 ring-aqua-deep/10">
@@ -58,9 +144,36 @@ export function DiagnosisResultEmpty() {
   );
 }
 
-export function DiagnosisResultUnknown({ onRetry }: { onRetry?: () => void }) {
+export function DiagnosisResultUnknown({
+  result,
+  onRetry,
+}: {
+  result?: DiagnoseAPIResponse;
+  onRetry?: () => void;
+}) {
+  const ctx =
+    result &&
+    "considered_context" in result &&
+    result.considered_context &&
+    Object.keys(result.considered_context).length > 0
+      ? result.considered_context
+      : null;
+
+  const metaStrip =
+    result && "meta" in result && result.meta ? (
+      <div className="mb-4">
+        <DiagnosisRunMetaStrip result={result} />
+      </div>
+    ) : null;
+
   return (
     <>
+      {metaStrip}
+      {ctx ? (
+        <div className="mb-4">
+          <ConsideredContextSection context={ctx} />
+        </div>
+      ) : null}
       <section
         className="rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card"
         aria-label="Unbekannter Diagnose-Status"
@@ -109,21 +222,45 @@ export function DiagnosisResult({
   onRetry?: () => void;
 }) {
   if (result.status === "unknown") {
-    return <DiagnosisResultUnknown onRetry={onRetry} />;
+    return <DiagnosisResultUnknown result={result} onRetry={onRetry} />;
   }
 
   const diagnoses = result.diagnoses ?? [];
-  if (diagnoses.length === 0) return <DiagnosisResultUnknown onRetry={onRetry} />;
+  if (diagnoses.length === 0) {
+    return <DiagnosisResultUnknown result={result} onRetry={onRetry} />;
+  }
 
   const top = pickTop(result);
-  if (!top) return <DiagnosisResultUnknown onRetry={onRetry} />;
+  if (!top) return <DiagnosisResultUnknown result={result} onRetry={onRetry} />;
 
   const additional = withoutTop(diagnoses, top);
   const aiExplanation = "ai_explanation" in result ? result.ai_explanation : null;
+  const considered =
+    "considered_context" in result && result.considered_context
+      ? result.considered_context
+      : null;
+
+  const safetyBlock =
+    top.safety_note_de?.trim() ? (
+      <Card
+        as="section"
+        aria-label="Sicherheitshinweis"
+        className="border-status-warning/40 bg-status-warning/15 ring-status-warning/35"
+      >
+        <h3 className="text-sm font-semibold text-aqua-deep">Hinweis</h3>
+        <p className="mt-2 text-sm text-aqua-deep/90">{top.safety_note_de}</p>
+      </Card>
+    ) : null;
 
   return (
     <>
       <div className="space-y-5">
+        <DiagnosisRunMetaStrip result={result} />
+
+        {considered && Object.keys(considered).length > 0 ? (
+          <ConsideredContextSection context={considered} />
+        ) : null}
+
         <HeroDiagnosisCard diagnosis={top} />
 
         <section
@@ -150,13 +287,6 @@ export function DiagnosisResult({
             </details>
 
             <FollowUpQuestions questions={top.follow_up_questions_de} />
-
-            {top.safety_note_de?.trim() ? (
-              <section className="rounded-card bg-status-warning/15 p-4 ring-1 ring-status-warning/35">
-                <h3 className="text-sm font-semibold text-aqua-deep">Hinweis</h3>
-                <p className="mt-2 text-sm text-aqua-deep/90">{top.safety_note_de}</p>
-              </section>
-            ) : null}
           </div>
         </section>
 
@@ -208,6 +338,8 @@ export function DiagnosisResult({
             </div>
           </details>
         ) : null}
+
+        {safetyBlock}
       </div>
       {onRetry ? <BottomNewAnalysisBar onRetry={onRetry} /> : null}
     </>

@@ -39,6 +39,64 @@ func TestEvaluate_NitriteGte025_MatchesNitriteRiskV1(t *testing.T) {
 	}
 }
 
+func TestEvaluate_NitriteAndRecentFilterCleaning_MatchesBiofilterVariant(t *testing.T) {
+	rs := mustRules(t)
+	n := 0.25
+	tr := true
+	in := EvalInput{NitriteMgL: &n, RecentFilterCleaning: &tr}
+	matches := rs.Evaluate(in)
+	if len(matches) == 0 || matches[0].RuleID != "nitrite_risk_biofilter_disturbance_v1" {
+		t.Fatalf("matches=%v", matches)
+	}
+	if matches[0].Confidence < 0.93 {
+		t.Fatalf("confidence=%v", matches[0].Confidence)
+	}
+}
+
+func TestEvaluate_NitriteRecentFilterCleaningFalse_MatchesBaselineRule(t *testing.T) {
+	rs := mustRules(t)
+	n := 0.25
+	f := false
+	in := EvalInput{NitriteMgL: &n, RecentFilterCleaning: &f}
+	matches := rs.Evaluate(in)
+	if len(matches) == 0 || matches[0].RuleID != "nitrite_risk_v1" {
+		t.Fatalf("matches=%v", matches)
+	}
+}
+
+func TestEvaluate_ContextBoolLeaf_MissingValue_NoMatch(t *testing.T) {
+	y := `version: 1
+rules:
+  - id: ctx_probe_v1
+    name: Probe
+    diagnosis_type: probe_t
+    severity: low
+    confidence: 0.99
+    summary_de: "x"
+    reasoning_de: "y"
+    follow_up_questions_de: []
+    safety_note_de: ""
+    when:
+      field: heavy_feeding
+      is_true: true
+    actions_now: []
+    actions_optional: []
+    avoid: []
+    facts: []
+`
+	rs, err := Parse([]byte(y))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ms := rs.Evaluate(EvalInput{}); len(ms) != 0 {
+		t.Fatalf("expected no match without heavy_feeding, got %v", ms)
+	}
+	tr := true
+	if ms := rs.Evaluate(EvalInput{HeavyFeeding: &tr}); len(ms) != 1 || ms[0].RuleID != "ctx_probe_v1" {
+		t.Fatalf("got %v", ms)
+	}
+}
+
 func TestEvaluate_SymptomMilkyWater_MatchesBacterialBloomV1(t *testing.T) {
 	rs := mustRules(t)
 	in := EvalInput{Symptoms: []string{"milky_water"}}

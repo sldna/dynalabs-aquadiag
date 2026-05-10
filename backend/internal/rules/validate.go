@@ -36,7 +36,7 @@ func hasInlineLeafSignals(w When) bool {
 	if strings.TrimSpace(w.Field) != "" {
 		return true
 	}
-	return hasNumericComparator(w) || hasStringComparator(w)
+	return hasNumericComparator(w) || hasStringComparator(w) || hasBoolComparator(w)
 }
 
 func validateWhen(ruleID, path string, w When) error {
@@ -96,28 +96,54 @@ func validateLeaf(ruleID, path string, w When) error {
 		return fmt.Errorf("%q %s: leaf requires field", ruleID, path)
 	}
 
+	boolCmp := hasBoolComparator(w)
 	num := hasNumericComparator(w)
 	str := hasStringComparator(w)
 
-	if !num && !str {
-		return fmt.Errorf("%q %s: leaf requires at least one comparator (eq, neq, gt, gte, lt, lte, contains, contains_any, contains_all)", ruleID, path)
+	modes := 0
+	if boolCmp {
+		modes++
 	}
-	if num && str {
-		return fmt.Errorf("%q %s: cannot mix numeric and string comparators on the same leaf", ruleID, path)
+	if num {
+		modes++
+	}
+	if str {
+		modes++
+	}
+	if modes == 0 {
+		return fmt.Errorf("%q %s: leaf requires at least one comparator (numeric, string contains*, or is_true)", ruleID, path)
+	}
+	if modes > 1 {
+		return fmt.Errorf("%q %s: cannot mix comparator kinds on the same leaf", ruleID, path)
 	}
 
 	switch field {
 	case "symptoms":
-		if num {
-			return fmt.Errorf("%q %s: field %q cannot use numeric operators", ruleID, path, field)
+		if boolCmp || num {
+			return fmt.Errorf("%q %s: field %q supports only string symptom matchers", ruleID, path, field)
 		}
-	default:
-		if !isNumericRuleField(field) {
-			return fmt.Errorf("%q %s: unknown field %q", ruleID, path, strings.TrimSpace(w.Field))
+		if !str {
+			return fmt.Errorf("%q %s: field %q requires contains / contains_any / contains_all", ruleID, path, field)
 		}
-		if str {
-			return fmt.Errorf("%q %s: field %q cannot use string operators (contains / contains_any / contains_all)", ruleID, path, field)
+		return nil
+	}
+
+	if isBoolRuleField(field) {
+		if !boolCmp {
+			return fmt.Errorf("%q %s: field %q requires is_true", ruleID, path, field)
 		}
+		return nil
+	}
+
+	if boolCmp {
+		return fmt.Errorf("%q %s: is_true is only allowed on boolean diagnosis-context fields", ruleID, path)
+	}
+
+	if !isNumericRuleField(field) {
+		return fmt.Errorf("%q %s: unknown field %q", ruleID, path, strings.TrimSpace(w.Field))
+	}
+	if str {
+		return fmt.Errorf("%q %s: field %q cannot use string operators (contains / contains_any / contains_all)", ruleID, path, field)
 	}
 	return nil
 }

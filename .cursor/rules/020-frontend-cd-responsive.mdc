@@ -1,0 +1,225 @@
+---
+description: AquaDiag frontend corporate design, responsive layout and UX rules
+globs:
+  - "frontend/**/*.tsx"
+  - "frontend/**/*.ts"
+  - "frontend/**/*.css"
+  - "frontend/**/*.json"
+  - "frontend/app/**/*"
+  - "frontend/components/**/*"
+  - "frontend/tailwind.config.*"
+---
+
+# AquaDiag Frontend CD And Responsive UX Rules
+
+This is the most important current ruleset.
+
+The frontend must implement the AquaDiag corporate design consistently and responsively across the entire app.
+
+## Design Goal
+
+AquaDiag should feel:
+- modern
+- calm
+- clean
+- trustworthy
+- high-quality
+- not overloaded
+- mobile-first
+- touch-friendly
+- consistent
+
+The UI should not look like:
+- a generic admin panel
+- a dense CRUD app
+- a scientific lab tool
+- a chart-heavy analytics dashboard
+- a collection of unrelated page layouts
+
+## Corporate Design Consistency
+
+Use the existing AquaDiag visual identity consistently.
+
+Preserve and reuse:
+- existing logo placement
+- existing brand colors
+- existing accent color logic
+- existing typography scale
+- existing card style
+- existing button style
+- existing border radius
+- existing spacing rhythm
+- existing header/navigation style
+
+Do not invent a new visual system unless explicitly requested.
+
+When improving screens, align them with the existing corporate design instead of creating isolated custom designs.
+
+## Global Layout Rule
+
+All pages must use the same responsive app shell.
+
+There must not be one wide diagnosis area while other pages remain narrow.
+There must not be inconsistent max-widths between dashboard, tank detail, diagnosis and settings-like pages.
+
+Recommended shell pattern:
+
+```tsx
+<main className="min-h-screen w-full bg-background">
+  <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    {/* page content */}
+  </div>
+</main>
+```
+
+If the project already has a `PageShell`, `AppShell`, `Container`, `PageLayout` or similar component:
+- use it everywhere
+- refactor pages toward it
+- do not duplicate layout wrappers
+
+## Responsive Requirements
+
+Mobile-first is mandatory.
+
+Required behavior:
+- mobile: one clear column
+- tablet: still readable, optionally two columns
+- desktop: use available width intelligently
+- large desktop: do not stretch text lines excessively
+- cards and forms must be `w-full`
+- important actions must remain visible
+- content must not appear cramped on mobile
+- content must not look artificially narrow on desktop
+
+Use responsive grids only where they improve comprehension.
+
+Avoid:
+- fixed pixel widths
+- desktop-only layouts
+- overflowing cards
+- inconsistent max-widths
+- isolated responsive fixes on only one page
+- layouts that work only at 1440px
+
+## UX Rules
+
+UX is more important than decorative UI.
+
+Every screen must answer:
+- Where am I?
+- What is important here?
+- What should I do next?
+- What happens if I click this?
+
+Rules:
+- one dominant primary action per screen section
+- destructive actions must be visually secondary and confirmed
+- empty states must guide the next action
+- loading states must preserve layout stability
+- error states must be understandable in German
+- primary actions must not be hidden inside accordions or menus
+- avoid long scientific explanations before actions
+
+## Visual Hierarchy
+
+Use a consistent hierarchy:
+
+1. page title and short contextual subtitle
+2. primary action
+3. status/summary cards
+4. main content cards
+5. secondary metadata
+6. advanced or explanatory content
+
+Diagnosis pages must keep action-first hierarchy:
+
+1. severity/status
+2. most likely diagnosis
+3. confidence
+4. "Jetzt tun"
+5. "Optional"
+6. "Vermeiden"
+7. explanation
+8. follow-up questions
+
+## Components To Prefer
+
+Prefer shared components:
+
+- `PageShell`
+- `AppShell`
+- `PageHeader`
+- `SectionHeader`
+- `ContentCard`
+- `StatusCard`
+- `EmptyState`
+- `ErrorState`
+- `LoadingState`
+- `PrimaryAction`
+- `SecondaryAction`
+- `TankCard`
+- `TankForm`
+- `WaterTestCard`
+- `WaterTestHistory`
+- `DiagnosisCard`
+- `ActionList`
+- `AvoidList`
+- `FollowUpQuestions`
+
+If these do not exist, create small reusable components instead of repeating page-specific layout markup.
+
+## Dashboard Rules
+
+Dashboard must:
+- show tank overview as cards
+- not use dense tables
+- show key information only
+- show last water test if available
+- show last diagnosis/status if available
+- provide clear actions:
+  - details
+  - new analysis
+  - create tank
+
+## Tank Detail Rules
+
+Tank detail must:
+- use the same page width as dashboard
+- show tank facts clearly
+- show edit/delete/new analysis actions
+- show water-test history as cards or clean responsive list
+- show empty states for missing history
+- confirm destructive actions
+
+## Forms
+
+Forms must:
+- be short
+- be grouped clearly
+- use labels
+- use helper text where useful
+- show validation errors close to fields
+- avoid optional fields visually dominating required fields
+
+## AI Explanation UI
+
+AI explanation must:
+- appear as supportive explanation
+- not visually override deterministic diagnosis result
+- be clearly separated from deterministic actions
+- respect uncertainty and safety notes
+- not introduce a chatbot-like experience unless explicitly requested
+
+## Avoid
+
+Avoid:
+- dense tables
+- too many badges
+- multiple competing button styles
+- large chart areas
+- arbitrary gradients
+- heavy shadows
+- nested cards inside nested cards
+- inconsistent spacing
+- mixing many max-width values
+- unbranded generic UI

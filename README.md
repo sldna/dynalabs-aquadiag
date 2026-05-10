@@ -98,10 +98,13 @@ docker compose up --build
   - `DELETE /v1/tanks/{id}` → `204`, löscht zuvor alle zugehörigen `water_tests`-Zeilen und deren `diagnosis_results` (explizite Transaktion im Backend; zusätzlich FK `ON DELETE CASCADE` ab Migration `006_foreign_keys_on_delete_cascade.sql`)
 - **Wassertests (lesen/löschen, keine separaten Charts/Export):**
   - `GET /v1/tanks/{id}/water-tests` → `{ "water_tests": [ … ] }`, Sortierung **neueste zuerst** (`id DESC`)
-  - `GET /v1/water-tests/{id}` → eine Messung inkl. `symptoms` (aus `symptoms_json`)
+  - `GET /v1/water-tests/{id}` → eine Messung inkl. `symptoms` (aus `symptoms_json`) und ggf. `diagnosis_context` (aus `diagnosis_context_json`, wenn bei der Diagnose mitgeliefert)
   - `DELETE /v1/water-tests/{id}` → `204`, entfernt zugehörige `diagnosis_results`, dann die Messzeile (Transaktion; zusätzlich FK `ON DELETE CASCADE` ab Migration `006_foreign_keys_on_delete_cascade.sql`)
 - Diagnose: `POST …/v1/diagnose` mit Tank-Bezug und optionalem `water`: **Härte** `kh_dkh` (°dKH), `gh_dgh` (°dGH); **Ionen** `nitrite_mg_l`, `nitrate_mg_l`, `ammonium_mg_l`, `co2_mg_l` (mg/l, Testkits); **O₂** `oxygen_mg_l` (mg/l). Alte Schlüssel `*_ppm` werden beim Einlesen noch akzeptiert.
-  - Optionaler Explainability-Layer: `ai_explanation` ist entweder ein JSON-Objekt oder `null`. Status unter `meta.ai_status`: `"disabled" | "ok" | "failed"`. Die deterministische Diagnose bleibt immer maßgeblich.
+  - Optional `context`: strukturierte Becken-Hinweise (alle Felder optional, Booleans nur wenn ausdrücklich gesetzt): `tank_age_days` (nicht negativ), `recent_water_change`, `recent_filter_cleaning`, `co2_enabled`, `high_stocking_density`, `heavy_feeding`, `many_dead_plants`, `new_animals_recently`. Fehlende Keys entsprechen „unbekannt“ und verhalten sich wie ältere Clients ohne Block.
+  - Antwort: `considered_context` spiegelt nur die tatsächlich gesetzten Kontextfelder wider (sonst weggelassen). Persistiert wird Kontext zusätzlich in `water_tests.diagnosis_context_json` (Migration `007_water_tests_diagnosis_context.sql`), wenn mindestens ein Feld gesetzt war.
+  - Regeln: Kontext-Booleans werden in YAML über `field` + `is_true: true|false` ausgewertet. Bei erhöhtem Nitrit **und** `recent_filter_cleaning: true` greift zusätzlich `nitrite_risk_biofilter_disturbance_v1` (etwas höhere Confidence als das Basis-Nitrit-Muster ohne diese Kombination).
+  - Optionaler Explainability-Layer: `ai_explanation` ist entweder ein JSON-Objekt oder `null`. Status unter `meta.ai_status`: `"disabled" | "ok" | "failed"`. Die deterministische Diagnose bleibt immer maßgeblich; die KI erhält `aquarium_context` nur zur sprachlichen Einordnung.
 - Web-UI: nach `/dashboard` verlinkt **Start**, **Becken** (`/dashboard/tanks`), **Diagnose** (`/dashboard/diagnose`).
 
 #### Strukturierte API-Fehler
@@ -149,6 +152,7 @@ Jede `/v1/diagnose`-Antwort enthält **immer** die folgenden Top-Level-Felder:
 - `diagnoses` (immer ein Array; leer wenn kein Treffer)
 - `matched_rules` (immer ein Array; leer wenn kein Treffer)
 - `meta` (Objekt mit `rule_engine_version`, `evaluated_rules`, `matched_count`, `generated_at` (RFC3339) sowie den Persistenz-IDs `diagnosis_id`, `water_test_id`, `tank_id`)
+- optional `considered_context` (Objekt), wenn beim Aufruf `context` mit Daten gesetzt war
 
 **Beispiel: `status: "matched"`**
 
@@ -176,7 +180,7 @@ Jede `/v1/diagnose`-Antwort enthält **immer** die folgenden Top-Level-Felder:
   "matched_rules": ["nitrite_risk_v1"],
   "meta": {
     "rule_engine_version": "1",
-    "evaluated_rules": 5,
+    "evaluated_rules": 6,
     "matched_count": 1,
     "generated_at": "2026-05-08T12:00:00Z",
     "diagnosis_id": 42,
@@ -196,7 +200,7 @@ Jede `/v1/diagnose`-Antwort enthält **immer** die folgenden Top-Level-Felder:
   "matched_rules": [],
   "meta": {
     "rule_engine_version": "1",
-    "evaluated_rules": 5,
+    "evaluated_rules": 6,
     "matched_count": 0,
     "generated_at": "2026-05-08T12:00:00Z",
     "diagnosis_id": 43,
@@ -220,7 +224,7 @@ Garantien: `diagnoses` und `matched_rules` sind nie `null`, sondern leere Arrays
 | `high`     | Deutliches Risiko, schnell handeln          | Warnung (`status.alert`) |
 | `critical` | Akute Gefahr, sofort handeln                | Kritisch (`status.critical`) |
 
-- **Backend-Validierung:** `rules/aquarium-rules.yaml` wird beim Start geprüft (`backend/internal/rules`). Der Start schlägt deterministisch fehl bei u. a. fehlender `version`, **doppelten Regel-IDs**, leerem `diagnosis_type` (bei gesetzter `id`), ungültigen `when`-Operatoren (z. B. numerische Vergleiche auf `symptoms` oder `contains_*` auf Messfeldern), widersprüchlichen `when`-Knoten oder einer fehlenden / unbekannten `severity` (Regel-Index, ID und erlaubte Werte werden genannt).
+- **Backend-Validierung:** `rules/aquarium-rules.yaml` wird beim Start geprüft (`backend/internal/rules`). Der Start schlägt deterministisch fehl bei u. a. fehlender `version`, **doppelten Regel-IDs**, leerem `diagnosis_type` (bei gesetzter `id`), ungültigen `when`-Operatoren (z. B. numerische Vergleiche auf `symptoms`, `contains_*` auf Messfeldern oder `is_true` auf nicht-kontextliche Felder), widersprüchlichen `when`-Knoten oder einer fehlenden / unbekannten `severity` (Regel-Index, ID und erlaubte Werte werden genannt).
 - **API-Fehler bei `/v1/diagnose`:** Antworten sind JSON mit den Feldern `code`, `message` und optional `errors` (Liste aus `field`, `code`, `message`). Ungültiger JSON-Body: `code` ist `invalid_json`; Validierungsfehler: `validation_failed`.
 - **Logs:** Das Backend schreibt strukturierte JSON-Zeilen nach **stderr** (`log/slog`), u. a. `rules_loaded` (Pfad, Version, Regelanzahl) beim Start und `rule_evaluation` (Trefferzahl, Regel-IDs, `duration_ms`) je Diagnose.
 - **Frontend-Mapping:** Die Farb- und Klassen-Zuordnung lebt zentral in `frontend/src/lib/severity.ts`; angezeigt wird sie über `SeverityBadge` (`frontend/src/components/SeverityBadge.tsx`). Unbekannte Werte fallen auf einen neutralen Sand-/Deep-Stil zurück (`bg-aqua-sand` etc.), statt die UI zu brechen.

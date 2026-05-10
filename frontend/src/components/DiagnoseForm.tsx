@@ -13,6 +13,7 @@ import {
   DiagnosisResultEmpty,
   DiagnosisResultLoading,
 } from "@/components/diagnosis/DiagnosisResult";
+import { Card } from "@/components/layout";
 import { mockDiagnoseResponse } from "@/lib/mock-diagnose";
 
 type SymptomOption = { id: string; label: string };
@@ -72,6 +73,87 @@ function parseNonNegativeNumber(input: string): {
   return { value: n };
 }
 
+function parseTankAgeDays(input: string): { value?: number; error?: string } {
+  const t = input.trim();
+  if (t === "") return {};
+  if (!/^\d+$/.test(t)) {
+    return { error: "Bitte ganze Tage eingeben." };
+  }
+  const n = Number(t);
+  if (n > 365000) {
+    return { error: "Wert ist unrealistisch hoch." };
+  }
+  return { value: n };
+}
+
+type TriChoice = "unset" | "yes" | "no";
+
+type ContextBoolField =
+  | "recent_water_change"
+  | "recent_filter_cleaning"
+  | "co2_enabled"
+  | "high_stocking_density"
+  | "heavy_feeding"
+  | "many_dead_plants"
+  | "new_animals_recently";
+
+const CONTEXT_BOOL_ROWS: { key: ContextBoolField; label: string }[] = [
+  { key: "recent_water_change", label: "Kürzlich Wasser gewechselt" },
+  { key: "recent_filter_cleaning", label: "Filter kürzlich gereinigt" },
+  { key: "co2_enabled", label: "CO₂-Zufuhr aktiv" },
+  { key: "high_stocking_density", label: "Hohe Besatzdichte" },
+  { key: "heavy_feeding", label: "Kräftige Fütterung" },
+  { key: "many_dead_plants", label: "Viele abgestorbene Pflanzen" },
+  { key: "new_animals_recently", label: "Kürzlich neue Tiere" },
+];
+
+function initialContextTri(): Record<ContextBoolField, TriChoice> {
+  return Object.fromEntries(
+    CONTEXT_BOOL_ROWS.map(({ key }) => [key, "unset"]),
+  ) as Record<ContextBoolField, TriChoice>;
+}
+
+function triToBool(t: TriChoice): boolean | undefined {
+  if (t === "unset") return undefined;
+  return t === "yes";
+}
+
+function ContextTriRow({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: TriChoice;
+  disabled: boolean;
+  onChange: (v: TriChoice) => void;
+}) {
+  const seg = (v: TriChoice, title: string) => (
+    <button
+      key={title}
+      type="button"
+      disabled={disabled}
+      onClick={() => onChange(v)}
+      className={`flex-1 px-2 py-2 text-xs font-medium disabled:opacity-60 sm:text-sm ${
+        value === v ? "bg-aqua-soft text-aqua-deep ring-1 ring-aqua-blue/40" : "text-aqua-deep/80"
+      }`}
+    >
+      {title}
+    </button>
+  );
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs text-aqua-deep/90 sm:text-sm">{label}</span>
+      <div className="flex rounded-lg ring-1 ring-aqua-deep/15">
+        {seg("unset", "—")}
+        {seg("yes", "Ja")}
+        {seg("no", "Nein")}
+      </div>
+    </div>
+  );
+}
+
 function isMockEnabled(): boolean {
   return process.env.NEXT_PUBLIC_DIAGNOSE_MOCK === "1";
 }
@@ -107,6 +189,8 @@ export function DiagnoseForm({
   const [o2, setO2] = useState("");
   const [co2, setCo2] = useState("");
   const [notes, setNotes] = useState("");
+  const [tankAgeDays, setTankAgeDays] = useState("");
+  const [ctxTri, setCtxTri] = useState<Record<ContextBoolField, TriChoice>>(initialContextTri);
 
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const toggle = (id: string) => {
@@ -136,8 +220,9 @@ export function DiagnoseForm({
       ammonia: parseNonNegativeNumber(ammonia),
       o2: parseNonNegativeNumber(o2),
       co2: parseNonNegativeNumber(co2),
+      tankAgeDays: parseTankAgeDays(tankAgeDays),
     };
-  }, [ammonia, co2, gh, kh, newVolume, nitrate, nitrite, o2, ph, temp]);
+  }, [ammonia, co2, gh, kh, newVolume, nitrate, nitrite, o2, ph, tankAgeDays, temp]);
 
   const hasValidationErrors = useMemo(() => {
     return Object.values(validation).some((v) => Boolean(v.error));
@@ -198,6 +283,18 @@ export function DiagnoseForm({
     }
     if (n) water.notes = n;
 
+    const ctxPayload: Record<string, unknown> = {};
+    if (validation.tankAgeDays.value !== undefined) {
+      ctxPayload.tank_age_days = validation.tankAgeDays.value;
+    }
+    for (const { key } of CONTEXT_BOOL_ROWS) {
+      const b = triToBool(ctxTri[key]);
+      if (b !== undefined) ctxPayload[key] = b;
+    }
+    if (Object.keys(ctxPayload).length > 0) {
+      payload.context = ctxPayload;
+    }
+
     setBusy(true);
     try {
       if (isMockEnabled()) {
@@ -234,11 +331,104 @@ export function DiagnoseForm({
 
   return (
     <div className="space-y-6">
+      <Card as="section" aria-label="Diagnose eingeben">
       <form
         onSubmit={onSubmit}
         aria-busy={busy}
-        className="space-y-5 rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card"
+        className="space-y-5"
       >
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-semibold text-aqua-deep">Becken</legend>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setTankMode("existing")}
+              className={`rounded-lg px-3 py-2 text-sm ring-1 disabled:opacity-60 ${
+                tankMode === "existing"
+                  ? "bg-aqua-soft ring-aqua-blue text-aqua-deep"
+                  : "bg-white ring-aqua-deep/15 text-aqua-deep/90"
+              }`}
+            >
+              Aus Liste
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setTankMode("new")}
+              className={`rounded-lg px-3 py-2 text-sm ring-1 disabled:opacity-60 ${
+                tankMode === "new"
+                  ? "bg-aqua-soft ring-aqua-blue text-aqua-deep"
+                  : "bg-white ring-aqua-deep/15 text-aqua-deep/90"
+              }`}
+            >
+              Neu anlegen
+            </button>
+          </div>
+          {tankMode === "existing" ? (
+            <label className="block text-sm text-aqua-deep/90">
+              Becken wählen
+              <select
+                disabled={busy}
+                className="mt-1 w-full rounded-lg border border-aqua-deep/20 bg-white px-3 py-2 text-aqua-deep disabled:opacity-60"
+                value={tankId === "" ? "" : String(tankId)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setTankId(v === "" ? "" : Number(v));
+                }}
+              >
+                {initialTanks.length === 0 ? (
+                  <option value="">— Keine Becken —</option>
+                ) : null}
+                {initialTanks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.volume_liters} l)
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="grid gap-3">
+              <label className="block text-sm text-aqua-deep/90">
+                Name
+                <input
+                  disabled={busy}
+                  className="mt-1 w-full rounded-lg border border-aqua-deep/20 px-3 py-2 disabled:opacity-60"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                />
+              </label>
+              <label className="block text-sm text-aqua-deep/90">
+                Liter (optional)
+                <input
+                  inputMode="decimal"
+                  disabled={busy}
+                  className={`mt-1 w-full rounded-lg border px-3 py-2 disabled:opacity-60 ${
+                    validation.newVolume.error ? "border-status-critical" : "border-aqua-deep/20"
+                  }`}
+                  value={newVolume}
+                  onChange={(e) => setNewVolume(e.target.value)}
+                  placeholder="z. B. 180"
+                />
+                {validation.newVolume.error ? (
+                  <span className="mt-1 block text-xs text-status-critical" role="alert">
+                    {validation.newVolume.error}
+                  </span>
+                ) : null}
+              </label>
+            </div>
+          )}
+          {initialTanks.length === 0 && tankMode === "existing" ? (
+            <p className="text-sm text-status-alert">
+              Noch keine Becken. Unter{" "}
+              <Link href="/dashboard/tanks" className="underline">
+                Becken
+              </Link>{" "}
+              anlegen oder „Neu anlegen“ wählen.
+            </p>
+          ) : null}
+        </fieldset>
+
         <fieldset className="space-y-2">
           <legend className="text-sm font-semibold text-aqua-deep">
             Symptome (Mehrfachauswahl)
@@ -265,6 +455,47 @@ export function DiagnoseForm({
                   ))}
                 </div>
               </div>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="space-y-4 rounded-card bg-aqua-soft/60 p-3 ring-1 ring-aqua-deep/10 sm:p-4">
+          <legend className="text-sm font-semibold text-aqua-deep">Becken-Kontext</legend>
+          <p className="text-xs text-aqua-deep/70">
+            Optional – hilft der Regelengine und Erklärungen. „—“ bedeutet: keine Angabe.
+          </p>
+          <label className="block text-sm text-aqua-deep/90">
+            Becken-Alter (Tage)
+            <input
+              inputMode="numeric"
+              disabled={busy}
+              className={`mt-1 w-full max-w-xs rounded-lg border px-3 py-2 text-sm disabled:opacity-60 ${
+                validation.tankAgeDays.error ? "border-status-critical" : "border-aqua-deep/20"
+              }`}
+              value={tankAgeDays}
+              onChange={(e) => setTankAgeDays(e.target.value)}
+              placeholder="z. B. 120"
+            />
+            {validation.tankAgeDays.error ? (
+              <span className="mt-1 block text-xs text-status-critical" role="alert">
+                {validation.tankAgeDays.error}
+              </span>
+            ) : null}
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {CONTEXT_BOOL_ROWS.map(({ key, label }) => (
+              <ContextTriRow
+                key={key}
+                label={label}
+                value={ctxTri[key]}
+                disabled={busy}
+                onChange={(v) =>
+                  setCtxTri((prev) => ({
+                    ...prev,
+                    [key]: v,
+                  }))
+                }
+              />
             ))}
           </div>
         </fieldset>
@@ -453,7 +684,7 @@ export function DiagnoseForm({
         </fieldset>
 
         <fieldset className="space-y-2">
-          <legend className="text-sm font-semibold text-aqua-deep">Optional</legend>
+          <legend className="text-sm font-semibold text-aqua-deep">Notiz</legend>
           <label className="block text-sm text-aqua-deep/90">
             Notiz (optional)
             <input
@@ -464,98 +695,6 @@ export function DiagnoseForm({
               placeholder="z. B. seit wann, was wurde geändert, welche Tiere betroffen sind"
             />
           </label>
-        </fieldset>
-
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-semibold text-aqua-deep">Becken</legend>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setTankMode("existing")}
-              className={`rounded-lg px-3 py-2 text-sm ring-1 disabled:opacity-60 ${
-                tankMode === "existing"
-                  ? "bg-aqua-soft ring-aqua-blue text-aqua-deep"
-                  : "bg-white ring-aqua-deep/15 text-aqua-deep/90"
-              }`}
-            >
-              Aus Liste
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setTankMode("new")}
-              className={`rounded-lg px-3 py-2 text-sm ring-1 disabled:opacity-60 ${
-                tankMode === "new"
-                  ? "bg-aqua-soft ring-aqua-blue text-aqua-deep"
-                  : "bg-white ring-aqua-deep/15 text-aqua-deep/90"
-              }`}
-            >
-              Neu anlegen
-            </button>
-          </div>
-          {tankMode === "existing" ? (
-            <label className="block text-sm text-aqua-deep/90">
-              Becken wählen
-              <select
-                disabled={busy}
-                className="mt-1 w-full rounded-lg border border-aqua-deep/20 bg-white px-3 py-2 text-aqua-deep disabled:opacity-60"
-                value={tankId === "" ? "" : String(tankId)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setTankId(v === "" ? "" : Number(v));
-                }}
-              >
-                {initialTanks.length === 0 ? (
-                  <option value="">— Keine Becken —</option>
-                ) : null}
-                {initialTanks.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.volume_liters} l)
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <div className="grid gap-3">
-              <label className="block text-sm text-aqua-deep/90">
-                Name
-                <input
-                  disabled={busy}
-                  className="mt-1 w-full rounded-lg border border-aqua-deep/20 px-3 py-2 disabled:opacity-60"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                />
-              </label>
-              <label className="block text-sm text-aqua-deep/90">
-                Liter (optional)
-                <input
-                  inputMode="decimal"
-                  disabled={busy}
-                  className={`mt-1 w-full rounded-lg border px-3 py-2 disabled:opacity-60 ${
-                    validation.newVolume.error ? "border-status-critical" : "border-aqua-deep/20"
-                  }`}
-                  value={newVolume}
-                  onChange={(e) => setNewVolume(e.target.value)}
-                  placeholder="z. B. 180"
-                />
-                {validation.newVolume.error ? (
-                  <span className="mt-1 block text-xs text-status-critical" role="alert">
-                    {validation.newVolume.error}
-                  </span>
-                ) : null}
-              </label>
-            </div>
-          )}
-          {initialTanks.length === 0 && tankMode === "existing" ? (
-            <p className="text-sm text-status-alert">
-              Noch keine Becken. Unter{" "}
-              <Link href="/dashboard/tanks" className="underline">
-                Becken
-              </Link>{" "}
-              anlegen oder „Neu anlegen“ wählen.
-            </p>
-          ) : null}
         </fieldset>
 
         {error ? (
@@ -572,18 +711,7 @@ export function DiagnoseForm({
           {busy ? "Diagnose läuft…" : "Diagnose starten"}
         </button>
       </form>
-
-      {result ? (
-        <p className="text-center text-xs text-aqua-deep/55">
-          {"meta" in result && result.meta ? (
-            <>
-              Diagnose-ID {result.meta.diagnosis_id} · Becken-ID {result.meta.tank_id}
-            </>
-          ) : (
-            <>Diagnose-Ergebnis empfangen</>
-          )}
-        </p>
-      ) : null}
+      </Card>
 
       {busy ? (
         <DiagnosisResultLoading />

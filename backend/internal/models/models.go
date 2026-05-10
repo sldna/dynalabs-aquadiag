@@ -17,21 +17,50 @@ type Tank struct {
 
 // WaterTestRecord is a persisted water test row for listing and detail endpoints.
 type WaterTestRecord struct {
-	ID                  int64    `json:"id"`
-	TankID              int64    `json:"tank_id"`
-	PH                  *float64 `json:"ph,omitempty"`
-	KhDKH               *float64 `json:"kh_dkh,omitempty"`
-	GhDGH               *float64 `json:"gh_dgh,omitempty"`
-	TempC               *float64 `json:"temp_c,omitempty"`
-	NitriteMgL          *float64 `json:"nitrite_mg_l,omitempty"`
-	NitrateMgL          *float64 `json:"nitrate_mg_l,omitempty"`
-	AmmoniumMgL         *float64 `json:"ammonium_mg_l,omitempty"`
-	OxygenMgL           *float64 `json:"oxygen_mg_l,omitempty"`
-	OxygenSaturationPct *float64 `json:"oxygen_saturation_pct,omitempty"`
-	CO2MgL              *float64 `json:"co2_mg_l,omitempty"`
-	Symptoms            []string `json:"symptoms"`
-	Notes               *string  `json:"notes,omitempty"`
-	CreatedAt           string   `json:"created_at"`
+	ID                  int64             `json:"id"`
+	TankID              int64             `json:"tank_id"`
+	DiagnosisContext    *DiagnosisContext `json:"diagnosis_context,omitempty"`
+	PH                  *float64          `json:"ph,omitempty"`
+	KhDKH               *float64          `json:"kh_dkh,omitempty"`
+	GhDGH               *float64          `json:"gh_dgh,omitempty"`
+	TempC               *float64          `json:"temp_c,omitempty"`
+	NitriteMgL          *float64          `json:"nitrite_mg_l,omitempty"`
+	NitrateMgL          *float64          `json:"nitrate_mg_l,omitempty"`
+	AmmoniumMgL         *float64          `json:"ammonium_mg_l,omitempty"`
+	OxygenMgL           *float64          `json:"oxygen_mg_l,omitempty"`
+	OxygenSaturationPct *float64          `json:"oxygen_saturation_pct,omitempty"`
+	CO2MgL              *float64          `json:"co2_mg_l,omitempty"`
+	Symptoms            []string          `json:"symptoms"`
+	Notes               *string           `json:"notes,omitempty"`
+	CreatedAt           string            `json:"created_at"`
+}
+
+// DiagnosisContext holds optional aquarium situational facts for rule evaluation and explanations.
+// Omitted or unset pointers mean „unknown“; JSON booleans are explicit Ja/Nein from the client.
+type DiagnosisContext struct {
+	TankAgeDays          *int  `json:"tank_age_days,omitempty"`
+	RecentWaterChange    *bool `json:"recent_water_change,omitempty"`
+	RecentFilterCleaning *bool `json:"recent_filter_cleaning,omitempty"`
+	CO2Enabled           *bool `json:"co2_enabled,omitempty"`
+	HighStockingDensity  *bool `json:"high_stocking_density,omitempty"`
+	HeavyFeeding         *bool `json:"heavy_feeding,omitempty"`
+	ManyDeadPlants       *bool `json:"many_dead_plants,omitempty"`
+	NewAnimalsRecently   *bool `json:"new_animals_recently,omitempty"`
+}
+
+// HasAny reports whether any context field was provided (non-nil pointer).
+func (c *DiagnosisContext) HasAny() bool {
+	if c == nil {
+		return false
+	}
+	return c.TankAgeDays != nil ||
+		c.RecentWaterChange != nil ||
+		c.RecentFilterCleaning != nil ||
+		c.CO2Enabled != nil ||
+		c.HighStockingDensity != nil ||
+		c.HeavyFeeding != nil ||
+		c.ManyDeadPlants != nil ||
+		c.NewAnimalsRecently != nil
 }
 
 // DiagnoseRequest is the body for POST /v1/diagnose.
@@ -41,8 +70,9 @@ type DiagnoseRequest struct {
 	// Tank, if set, creates a new tank (used when tank_id is absent).
 	Tank *InlineTank `json:"tank"`
 
-	Water    WaterTestInput `json:"water"`
-	Symptoms []string       `json:"symptoms"`
+	Water    WaterTestInput    `json:"water"`
+	Symptoms []string          `json:"symptoms"`
+	Context  *DiagnosisContext `json:"context,omitempty"`
 }
 
 // UnmarshalJSON supports both the current shape
@@ -254,6 +284,9 @@ type DiagnoseAPIResponse struct {
 
 	Diagnoses    []DiagnosisItem `json:"diagnoses"`
 	MatchedRules []string        `json:"matched_rules"`
+
+	// ConsideredContext echoes structured context fields that were supplied with the request.
+	ConsideredContext *DiagnosisContext `json:"considered_context,omitempty"`
 
 	// AIExplanation is optional. When AI is disabled or failed, it is null and
 	// the deterministic diagnosis fields remain the source of truth.

@@ -1,43 +1,75 @@
 ---
+description: AquaDiag current product scope, phase 5/6 priorities and guardrails
+globs:
+  - "**/*"
 alwaysApply: true
 ---
 
-# AquaDiag V1 Product Scope
+# AquaDiag Product Scope
 
-This project is AquaDiag V1: a minimal aquarium diagnosis MVP.
+AquaDiag is an aquarium decision-support and management app.
 
-The product is a decision-support system, not a generic aquarium logbook.
+The core value is helping aquarium owners answer:
 
-Always optimize for:
-- fast diagnosis
-- clear user action
-- low input friction
-- mobile-first UX
-- deterministic rule-based diagnosis
+- What is likely happening?
+- How urgent is it?
+- What should I do now?
+- What should I avoid?
+- Which tank and water-value history belongs to the case?
 
-V1 includes only:
-- tank profile
-- water test / problem input
-- symptom input
-- YAML rule engine
-- diagnosis result
-- optional AI explanation
-- SQLite
-- Docker Compose
+## Current Project State
 
-Never add in V1:
+The project is beyond the initial MVP-before-AI phase.
+
+Already implemented or assumed available:
+- Go backend
+- REST API
+- SQLite default database
+- Docker Compose setup
+- Next.js frontend
+- tank management
+- water-value handling
+- deterministic YAML rule engine
+- diagnosis endpoint
+- AI explanation layer
+- CI/CD basics
+
+Current working phase:
+- Phase 5/6: product polish, responsive UI, consistent corporate design, UX hardening, quality and release readiness.
+
+## Current Main Priority
+
+The most important priority is consistent, responsive UI according to the AquaDiag corporate design.
+
+All screens must:
+- use the same layout system
+- use the same responsive width behavior
+- use consistent cards, spacing, radii, typography and action hierarchy
+- feel modern but not overloaded
+- work cleanly on mobile, tablet and desktop
+- avoid narrow/wide inconsistencies between pages
+
+## Product Principles
+
+- UX is essential.
+- UI must be modern, calm and clear.
+- Diagnosis remains action-first.
+- Water values are helpful but should not overload the user.
+- Beginner users must understand the next action immediately.
+- AI supports explanation, but deterministic rules remain the source of truth.
+- The product should feel like a polished SaaS-style aquarium assistant, not an admin panel.
+
+## Still Out Of Scope Unless Explicitly Requested
+
+Do not introduce without explicit request:
 - authentication
-- payment
-- Kubernetes
-- PostgreSQL as requirement
-- ESP32
-- Shelly
-- sensor integrations
-- photo analysis
-- ML training
-- community features
-- complex admin panels
-
-The AI layer must not decide the diagnosis.
-The rule engine decides.
-The AI only explains, summarizes, and asks follow-up questions.
+- payments
+- public community features
+- native mobile app
+- image diagnosis
+- complex analytics dashboards
+- unnecessary charts
+- hardware control as core dependency
+- Kubernetes-first deployment
+- mandatory PostgreSQL
+- multi-tenancy

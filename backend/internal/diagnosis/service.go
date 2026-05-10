@@ -50,12 +50,12 @@ func (s *Service) Diagnose(ctx context.Context, req models.DiagnoseRequest) (mod
 	}
 
 	symptoms := normalizeSymptoms(req.Symptoms)
-	waterTestID, err := db.InsertWaterTest(ctx, tx, tankID, req.Water, symptoms)
+	waterTestID, err := db.InsertWaterTest(ctx, tx, tankID, req.Water, symptoms, req.Context)
 	if err != nil {
 		return models.DiagnoseAPIResponse{}, fmt.Errorf("water test: %w", err)
 	}
 
-	in := rules.FromDiagnoseRequest(req.Water, symptoms)
+	in := rules.FromDiagnoseRequest(req.Water, symptoms, req.Context)
 
 	evStart := time.Now()
 	matches := s.rules.Evaluate(in)
@@ -92,7 +92,7 @@ func (s *Service) Diagnose(ctx context.Context, req models.DiagnoseRequest) (mod
 	var aiErrorCode *string
 	if s.ai != nil && s.ai.Enabled() {
 		aiStatus = "failed"
-		if ex2, err := s.ai.Explain(ctx, primary, matches, matchedIDs); err == nil {
+		if ex2, err := s.ai.Explain(ctx, primary, matches, matchedIDs, req.Context); err == nil {
 			aiExplanation = ex2
 			aiStatus = "ok"
 		} else if s.ai.IsDevelopment() {
@@ -129,6 +129,9 @@ func (s *Service) Diagnose(ctx context.Context, req models.DiagnoseRequest) (mod
 	}
 	resp := models.BuildDiagnoseResponse(matches, meta)
 	resp.AIExplanation = aiExplanation
+	if req.Context != nil && req.Context.HasAny() {
+		resp.ConsideredContext = req.Context
+	}
 	return resp, nil
 }
 
@@ -171,6 +174,7 @@ func validateDiagnoseRequest(req models.DiagnoseRequest) error {
 	}
 
 	appendNonFiniteWaterErrors(&errs, req.Water)
+	appendDiagnosisContextErrors(&errs, req.Context)
 
 	if !tankBlocking && !hasMeasurementsOrSymptoms(req.Water, req.Symptoms) {
 		errs = append(errs, models.FieldError{
@@ -184,6 +188,29 @@ func validateDiagnoseRequest(req models.DiagnoseRequest) error {
 		return nil
 	}
 	return &ValidationFailedError{Errors: errs}
+}
+
+func appendDiagnosisContextErrors(errs *[]models.FieldError, c *models.DiagnosisContext) {
+	if c == nil || !c.HasAny() {
+		return
+	}
+	if c.TankAgeDays != nil {
+		if *c.TankAgeDays < 0 {
+			*errs = append(*errs, models.FieldError{
+				Field:   "context.tank_age_days",
+				Code:    "invalid_range",
+				Message: "tank_age_days darf nicht negativ sein.",
+			})
+		}
+		const maxTankAgeDays = 365000 // ~1000 Jahre, nur Plausibilität
+		if *c.TankAgeDays > maxTankAgeDays {
+			*errs = append(*errs, models.FieldError{
+				Field:   "context.tank_age_days",
+				Code:    "invalid_range",
+				Message: "tank_age_days ist zu groß.",
+			})
+		}
+	}
 }
 
 func appendNonFiniteWaterErrors(errs *[]models.FieldError, w models.WaterTestInput) {

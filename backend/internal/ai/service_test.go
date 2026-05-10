@@ -20,7 +20,7 @@ func TestExplain_MissingAPIKey_ReturnsMissingAPIKey(t *testing.T) {
 		AppEnv:         "development",
 	}, http.DefaultClient)
 
-	_, err := svc.Explain(context.Background(), models.RuleMatch{DiagnosisType: "unknown"}, nil, nil)
+	_, err := svc.Explain(context.Background(), models.RuleMatch{DiagnosisType: "unknown"}, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -45,7 +45,7 @@ func TestExplain_Non2xx_MapsToProviderError(t *testing.T) {
 		AppEnv:         "development",
 	}, ts.Client())
 
-	_, err := svc.Explain(context.Background(), models.RuleMatch{DiagnosisType: "unknown"}, nil, nil)
+	_, err := svc.Explain(context.Background(), models.RuleMatch{DiagnosisType: "unknown"}, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}

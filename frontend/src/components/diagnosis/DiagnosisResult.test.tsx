@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import { DiagnosisResult } from "./DiagnosisResult";
 
@@ -102,6 +102,72 @@ describe("DiagnosisResult AI explanation", () => {
       screen.getByText(/Die KI ergänzt die regelbasierte Analyse/),
     ).toBeInTheDocument();
     expect(screen.getByText(/AI summary/)).toBeInTheDocument();
+  });
+});
+
+describe("DiagnosisResult considered_context", () => {
+  it("renders Berücksichtigter Kontext for supplied fields", () => {
+    render(
+      <DiagnosisResult
+        result={{
+          status: "matched",
+          top_diagnosis: {
+            rule_id: "r1",
+            name: "Test",
+            diagnosis_type: "x",
+            severity: "low",
+            confidence: 0.5,
+            summary_de: "S",
+            reasoning_de: "R",
+            actions_now: [],
+            actions_optional: [],
+            avoid: [],
+            follow_up_questions_de: [],
+            safety_note_de: "",
+            facts: [],
+          },
+          diagnoses: [
+            {
+              rule_id: "r1",
+              name: "Test",
+              diagnosis_type: "x",
+              severity: "low",
+              confidence: 0.5,
+              summary_de: "S",
+              reasoning_de: "R",
+              actions_now: [],
+              actions_optional: [],
+              avoid: [],
+              follow_up_questions_de: [],
+              safety_note_de: "",
+              facts: [],
+            },
+          ],
+          matched_rules: ["r1"],
+          considered_context: {
+            tank_age_days: 30,
+            recent_filter_cleaning: true,
+          },
+          meta: {
+            rule_engine_version: "1",
+            evaluated_rules: 1,
+            matched_count: 1,
+            generated_at: "2026-05-09T07:00:00Z",
+            diagnosis_id: 1,
+            water_test_id: 1,
+            tank_id: 1,
+          },
+        }}
+      />,
+    );
+
+    const region = screen.getByRole("region", {
+      name: "Berücksichtigter Kontext",
+    });
+    expect(within(region).getByText("Becken-Alter (Tage)")).toBeInTheDocument();
+    expect(within(region).getByText("30")).toBeInTheDocument();
+    expect(within(region).getByText("Filter kürzlich gereinigt")).toBeInTheDocument();
+    expect(within(region).getByText("Ja")).toBeInTheDocument();
   });
 });
 

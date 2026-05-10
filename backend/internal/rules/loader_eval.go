@@ -48,6 +48,9 @@ type When struct {
 
 	Field string `yaml:"field,omitempty"`
 
+	// IsTrue, when set, compares a boolean context fact (see EvalInput). Requires field to be a known boolean context key.
+	IsTrue *bool `yaml:"is_true,omitempty"`
+
 	Eq  *float64 `yaml:"eq,omitempty"`
 	Neq *float64 `yaml:"neq,omitempty"`
 	Gt  *float64 `yaml:"gt,omitempty"`
@@ -88,21 +91,29 @@ func Parse(data []byte) (Ruleset, error) {
 
 // EvalInput is the fact set used for rule evaluation (Konzentrationen in mg/l).
 type EvalInput struct {
-	PH                  *float64
-	KhDKH               *float64
-	GhDGH               *float64
-	TempC               *float64
-	NitriteMgL          *float64
-	NitrateMgL          *float64
-	AmmoniumMgL         *float64
-	OxygenMgL           *float64
-	OxygenSaturationPct *float64
-	CO2MgL              *float64
-	Symptoms            []string
+	PH                   *float64
+	KhDKH                *float64
+	GhDGH                *float64
+	TempC                *float64
+	NitriteMgL           *float64
+	NitrateMgL           *float64
+	AmmoniumMgL          *float64
+	OxygenMgL            *float64
+	OxygenSaturationPct  *float64
+	CO2MgL               *float64
+	TankAgeDays          *float64
+	RecentWaterChange    *bool
+	RecentFilterCleaning *bool
+	CO2Enabled           *bool
+	HighStockingDensity  *bool
+	HeavyFeeding         *bool
+	ManyDeadPlants       *bool
+	NewAnimalsRecently   *bool
+	Symptoms             []string
 }
 
 // FromDiagnoseRequest maps API input to EvalInput (symptoms normalized).
-func FromDiagnoseRequest(w models.WaterTestInput, symptoms []string) EvalInput {
+func FromDiagnoseRequest(w models.WaterTestInput, symptoms []string, ctx *models.DiagnosisContext) EvalInput {
 	sx := make([]string, 0, len(symptoms))
 	for _, s := range symptoms {
 		s = strings.TrimSpace(strings.ToLower(s))
@@ -110,7 +121,7 @@ func FromDiagnoseRequest(w models.WaterTestInput, symptoms []string) EvalInput {
 			sx = append(sx, s)
 		}
 	}
-	return EvalInput{
+	in := EvalInput{
 		PH:                  w.PH,
 		KhDKH:               w.KhDKH,
 		GhDGH:               w.GhDGH,
@@ -123,6 +134,21 @@ func FromDiagnoseRequest(w models.WaterTestInput, symptoms []string) EvalInput {
 		CO2MgL:              w.CO2MgL,
 		Symptoms:            sx,
 	}
+	if ctx == nil {
+		return in
+	}
+	if ctx.TankAgeDays != nil {
+		v := float64(*ctx.TankAgeDays)
+		in.TankAgeDays = &v
+	}
+	in.RecentWaterChange = ctx.RecentWaterChange
+	in.RecentFilterCleaning = ctx.RecentFilterCleaning
+	in.CO2Enabled = ctx.CO2Enabled
+	in.HighStockingDensity = ctx.HighStockingDensity
+	in.HeavyFeeding = ctx.HeavyFeeding
+	in.ManyDeadPlants = ctx.ManyDeadPlants
+	in.NewAnimalsRecently = ctx.NewAnimalsRecently
+	return in
 }
 
 // EvaluatedCount returns the number of rules the engine actually considers
@@ -227,17 +253,91 @@ func evalLeaf(w When, in EvalInput) bool {
 	}
 	num := hasNumericComparator(w)
 	str := hasStringComparator(w)
+	boolCmp := hasBoolComparator(w)
 
 	if field == "symptoms" {
-		if num {
+		if num || boolCmp {
 			return false
 		}
 		return evalSymptomsField(w, in.Symptoms)
+	}
+	if isBoolRuleField(field) {
+		return evalBoolLeaf(field, w, in)
+	}
+	if boolCmp {
+		return false
 	}
 	if str {
 		return false
 	}
 	return evalNumericLeaf(field, w, in)
+}
+
+func hasBoolComparator(w When) bool {
+	return w.IsTrue != nil
+}
+
+func evalBoolLeaf(field string, w When, in EvalInput) bool {
+	if w.IsTrue == nil {
+		return false
+	}
+	v, ok := boolField(field, in)
+	if !ok {
+		return false
+	}
+	return v == *w.IsTrue
+}
+
+func boolField(field string, in EvalInput) (value bool, ok bool) {
+	switch field {
+	case "recent_water_change":
+		if in.RecentWaterChange == nil {
+			return false, false
+		}
+		return *in.RecentWaterChange, true
+	case "recent_filter_cleaning":
+		if in.RecentFilterCleaning == nil {
+			return false, false
+		}
+		return *in.RecentFilterCleaning, true
+	case "co2_enabled":
+		if in.CO2Enabled == nil {
+			return false, false
+		}
+		return *in.CO2Enabled, true
+	case "high_stocking_density":
+		if in.HighStockingDensity == nil {
+			return false, false
+		}
+		return *in.HighStockingDensity, true
+	case "heavy_feeding":
+		if in.HeavyFeeding == nil {
+			return false, false
+		}
+		return *in.HeavyFeeding, true
+	case "many_dead_plants":
+		if in.ManyDeadPlants == nil {
+			return false, false
+		}
+		return *in.ManyDeadPlants, true
+	case "new_animals_recently":
+		if in.NewAnimalsRecently == nil {
+			return false, false
+		}
+		return *in.NewAnimalsRecently, true
+	default:
+		return false, false
+	}
+}
+
+func isBoolRuleField(field string) bool {
+	switch field {
+	case "recent_water_change", "recent_filter_cleaning", "co2_enabled",
+		"high_stocking_density", "heavy_feeding", "many_dead_plants", "new_animals_recently":
+		return true
+	default:
+		return false
+	}
 }
 
 func evalNumericLeaf(field string, w When, in EvalInput) bool {
@@ -338,6 +438,8 @@ func isNumericRuleField(field string) bool {
 		return true
 	case "co2_mg_l", "co2_ppm":
 		return true
+	case "tank_age_days":
+		return true
 	default:
 		return false
 	}
@@ -368,6 +470,8 @@ func numericField(field string, in EvalInput) (*float64, bool) {
 		return in.OxygenSaturationPct, in.OxygenSaturationPct != nil
 	case "co2_mg_l", "co2_ppm":
 		return in.CO2MgL, in.CO2MgL != nil
+	case "tank_age_days":
+		return in.TankAgeDays, in.TankAgeDays != nil
 	default:
 		return nil, false
 	}

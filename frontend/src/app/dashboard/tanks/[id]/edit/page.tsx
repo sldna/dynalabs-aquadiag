@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { DashboardNav } from "@/components/DashboardNav";
+import { Card, PageContainer } from "@/components/layout";
 import { TankEditForm } from "@/components/tanks/TankEditForm";
 import { serverFetchBase } from "@/lib/api-base";
 import type { Tank } from "@/lib/types";
@@ -43,56 +43,53 @@ export default async function TankEditPage({ params }: RouteParams) {
   const result = await loadTank(id);
 
   return (
-    <>
-      <DashboardNav active="tanks" />
-      <main className="mx-auto flex min-h-0 max-w-lg flex-col gap-6 px-4 py-6">
-        <Link
-          href={
-            result.kind === "ok"
-              ? `/dashboard/tanks/${result.tank.id}`
-              : "/dashboard/tanks"
-          }
-          className="text-sm text-aqua-blue underline decoration-aqua-blue/40"
-        >
-          ← Abbrechen
-        </Link>
+    <PageContainer variant="readable">
+      <Link
+        href={
+          result.kind === "ok"
+            ? `/dashboard/tanks/${result.tank.id}`
+            : "/dashboard/tanks"
+        }
+        className="text-sm text-aqua-blue underline decoration-aqua-blue/40"
+      >
+        ← Abbrechen
+      </Link>
 
-        {result.kind === "ok" ? (
-          <>
-            <header className="space-y-2">
-              <p className="text-sm font-medium text-aqua-deep">Becken bearbeiten</p>
-              <h1 className="text-2xl font-semibold tracking-tight text-aqua-deep">
-                {result.tank.name}
-              </h1>
-            </header>
-            <TankEditForm tank={result.tank} />
-          </>
-        ) : result.kind === "invalid_id" || result.kind === "not_found" ? (
-          <section className="rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card">
-            <h1 className="text-base font-semibold text-aqua-deep">
-              {result.kind === "invalid_id"
-                ? "Ungültige Becken-ID."
-                : "Becken nicht gefunden."}
+      {result.kind === "ok" ? (
+        <>
+          <header className="space-y-2">
+            <p className="text-sm font-medium text-aqua-deep">Becken bearbeiten</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-aqua-deep">
+              {result.tank.name}
             </h1>
-            <Link
-              href="/dashboard/tanks"
-              className="mt-4 inline-block rounded-button bg-aqua-blue px-4 py-3 text-sm font-semibold text-white hover:bg-[#168EAA]"
-            >
-              Zur Beckenliste
-            </Link>
-          </section>
-        ) : (
-          <section
-            role="alert"
-            className="rounded-card border border-status-warning/50 bg-status-warning/15 p-4 shadow-card"
+          </header>
+          <TankEditForm tank={result.tank} />
+        </>
+      ) : result.kind === "invalid_id" || result.kind === "not_found" ? (
+        <Card as="section">
+          <h1 className="text-base font-semibold text-aqua-deep">
+            {result.kind === "invalid_id"
+              ? "Ungültige Becken-ID."
+              : "Becken nicht gefunden."}
+          </h1>
+          <Link
+            href="/dashboard/tanks"
+            className="mt-4 inline-block rounded-button bg-aqua-blue px-4 py-3 text-sm font-semibold text-white hover:bg-[#168EAA]"
           >
-            <h1 className="text-base font-semibold text-aqua-deep">
-              Becken konnte nicht geladen werden
-            </h1>
-            <p className="mt-2 text-sm text-aqua-deep/85">{result.message}</p>
-          </section>
-        )}
-      </main>
-    </>
+            Zur Beckenliste
+          </Link>
+        </Card>
+      ) : (
+        <section
+          role="alert"
+          className="rounded-card border border-status-warning/50 bg-status-warning/15 p-4 shadow-card"
+        >
+          <h1 className="text-base font-semibold text-aqua-deep">
+            Becken konnte nicht geladen werden
+          </h1>
+          <p className="mt-2 text-sm text-aqua-deep/85">{result.message}</p>
+        </section>
+      )}
+    </PageContainer>
   );
 }

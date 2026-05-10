@@ -1,0 +1,99 @@
+---
+description: AquaDiag Go backend, API and persistence rules
+globs:
+  - "backend/**/*.go"
+  - "backend/**/*.sql"
+  - "backend/**/*.yaml"
+  - "backend/**/*.yml"
+  - "backend/**/*.json"
+  - "backend/go.mod"
+  - "backend/go.sum"
+---
+
+# AquaDiag Backend Go Rules
+
+The backend must stay stable, explicit and testable.
+
+## Runtime Requirements
+
+The backend must:
+- expose `/health`
+- use environment-based configuration
+- use SQLite by default
+- keep PostgreSQL optional unless explicitly requested
+- return predictable JSON
+- validate inputs clearly
+- avoid leaking internals to the frontend
+
+## API Rules
+
+Use stable REST endpoints.
+
+When changing response shapes:
+- update frontend types
+- update tests
+- update API docs
+- preserve backwards compatibility where practical
+
+## Data Integrity
+
+Deleting parent records must not leave orphaned child data.
+
+Deleting a tank should handle related:
+- water tests
+- diagnosis results
+
+Deleting a water test should handle related:
+- diagnosis results
+
+Use:
+- database cascades
+- or explicit transactions
+
+## Structured Errors
+
+Use user-safe structured errors.
+
+Recommended shape:
+
+```json
+{
+  "error": {
+    "code": "validation_error",
+    "message": "Bitte prüfe die Eingaben.",
+    "details": []
+  }
+}
+```
+
+Never expose:
+- SQL internals
+- stack traces
+- raw panic output
+- filesystem paths
+- secrets
+
+## Environment Variables
+
+Recognized variables:
+- `DATABASE_PATH`
+- `DATABASE_URL`
+- `CORS_ALLOWED_ORIGINS`
+- `AI_ENABLED`
+- `AI_API_KEY`
+- `AI_BASE_URL`
+- `AI_MODEL`
+- `AI_TIMEOUT_SECONDS`
+
+## Testing
+
+Backend tests should cover:
+- tank CRUD
+- water-test CRUD
+- diagnosis endpoint
+- AI-enabled response behavior
+- AI-disabled fallback behavior
+- AI timeout/failure fallback
+- cascade delete behavior
+- validation errors
+- not-found errors

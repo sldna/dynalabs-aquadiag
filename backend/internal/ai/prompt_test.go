@@ -35,7 +35,7 @@ func TestBuildUserPrompt_IncludesSecondaryDiagnoses(t *testing.T) {
 		SafetyNoteDE:  "safe2",
 	}
 
-	p, err := BuildUserPrompt(top, []models.RuleMatch{top, secondary}, []string{"primary_rule", "secondary_rule"})
+	p, err := BuildUserPrompt(top, []models.RuleMatch{top, secondary}, []string{"primary_rule", "secondary_rule"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,5 +48,39 @@ func TestBuildUserPrompt_IncludesSecondaryDiagnoses(t *testing.T) {
 	}
 	if !strings.Contains(p, `"diagnoses"`) {
 		t.Fatalf("prompt missing diagnoses array: %s", p)
+	}
+}
+
+func TestBuildUserPrompt_IncludesAquariumContext(t *testing.T) {
+	top := models.RuleMatch{
+		RuleID:          "r1",
+		Name:            "R1",
+		DiagnosisType:   "x",
+		Severity:        "low",
+		Confidence:      0.5,
+		SummaryDE:       "s",
+		ReasoningDE:     "r",
+		SafetyNoteDE:    "",
+		FollowUpDE:      nil,
+		ActionsNow:      nil,
+		ActionsOptional: nil,
+		Avoid:           nil,
+		Facts:           nil,
+	}
+	days := 42
+	filter := true
+	ctx := &models.DiagnosisContext{
+		TankAgeDays:          &days,
+		RecentFilterCleaning: &filter,
+	}
+	p, err := BuildUserPrompt(top, []models.RuleMatch{top}, []string{"r1"}, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(p, `"aquarium_context"`) {
+		t.Fatalf("missing aquarium_context: %s", p)
+	}
+	if !strings.Contains(p, `"tank_age_days"`) || !strings.Contains(p, `"recent_filter_cleaning"`) {
+		t.Fatalf("missing context keys: %s", p)
 	}
 }

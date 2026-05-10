@@ -1,0 +1,93 @@
+---
+description: AquaDiag phase 5/6 quality, release readiness and documentation rules
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# AquaDiag Quality And Release Readiness
+
+The project is in a polish and stabilization phase.
+
+## Main Quality Goal
+
+Improve consistency and reliability without creating feature creep.
+
+Priority order:
+1. responsive CD-compliant layout
+2. UX clarity
+3. stable API behavior
+4. data integrity
+5. test coverage
+6. documentation
+7. deployment reliability
+
+## General Rules
+
+Prefer:
+- small changes
+- shared layout components
+- reusable UI primitives
+- stable API contracts
+- explicit backend logic
+- readable code
+- tests for behavior
+- documentation for setup and endpoints
+
+Avoid:
+- broad unrelated refactors
+- replacing the visual system without need
+- adding new features during layout cleanup
+- overengineering
+- hidden state
+- duplicate business logic
+- page-specific layout hacks
+
+## UI QA Checklist
+
+For each changed page verify:
+- mobile width around 375px
+- tablet width around 768px
+- desktop width around 1280px
+- no horizontal overflow
+- consistent page container width
+- clear primary action
+- readable headings
+- cards align with CD
+- loading state exists
+- empty state exists where applicable
+- error state is understandable
+- destructive actions are confirmed
+
+## Backend QA Checklist
+
+Verify:
+- tests pass
+- Docker Compose works
+- `/health` works
+- database migrations or schema changes are safe
+- no orphan data after deletes
+- AI fallback does not break diagnosis
+- errors are structured and safe
+
+## Documentation
+
+Update docs when:
+- setup changes
+- env vars change
+- endpoints change
+- API response changes
+- AI behavior changes
+- Docker/CI behavior changes
+- phase status changes
+
+## Definition Of Done For Phase 5/6 UI Work
+
+A UI/layout task is done when:
+1. the changed screen follows the AquaDiag CD
+2. the page uses the shared layout shell
+3. mobile, tablet and desktop layouts are checked
+4. no page-specific width inconsistency remains
+5. UX has clear primary and secondary actions
+6. loading/empty/error states are handled
+7. no unnecessary feature was added

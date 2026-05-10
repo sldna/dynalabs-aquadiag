@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"aquadiag/backend/internal/models"
 )
@@ -14,16 +15,24 @@ import (
 var ErrWaterTestNotFound = errors.New("water test not found")
 
 // InsertWaterTest persists a water test row; symptoms are stored as JSON array.
-func InsertWaterTest(ctx context.Context, q DBTX, tankID int64, w models.WaterTestInput, symptoms []string) (int64, error) {
+func InsertWaterTest(ctx context.Context, q DBTX, tankID int64, w models.WaterTestInput, symptoms []string, dxCtx *models.DiagnosisContext) (int64, error) {
 	symJSON, err := json.Marshal(symptoms)
 	if err != nil {
 		return 0, err
 	}
+	var ctxJSON any
+	if dxCtx != nil && dxCtx.HasAny() {
+		b, err := json.Marshal(dxCtx)
+		if err != nil {
+			return 0, err
+		}
+		ctxJSON = string(b)
+	}
 	res, err := q.ExecContext(ctx, `
 INSERT INTO water_tests (
   tank_id, ph, kh_dkh, gh_dgh, temp_c, nitrite_mg_l, nitrate_mg_l, ammonium_mg_l,
-  oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes
-) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+  oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes, diagnosis_context_json
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		tankID,
 		nullFloat(w.PH),
 		nullFloat(w.KhDKH),
@@ -37,6 +46,7 @@ INSERT INTO water_tests (
 		nullFloat(w.CO2MgL),
 		string(symJSON),
 		nullStr(w.Notes),
+		ctxJSON,
 	)
 	if err != nil {
 		return 0, err
@@ -45,7 +55,7 @@ INSERT INTO water_tests (
 }
 
 const waterTestSelectCols = `
-id, tank_id, ph, kh_dkh, gh_dgh, temp_c, nitrite_mg_l, nitrate_mg_l, ammonium_mg_l,
+id, tank_id, diagnosis_context_json, ph, kh_dkh, gh_dgh, temp_c, nitrite_mg_l, nitrate_mg_l, ammonium_mg_l,
 oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes, created_at`
 
 // ListWaterTestsByTank returns water tests for a tank, newest id first.
@@ -105,12 +115,14 @@ func DeleteWaterTestCascade(ctx context.Context, tx *sql.Tx, waterTestID int64) 
 
 func scanWaterTestRow(scan func(dest ...any) error) (models.WaterTestRecord, error) {
 	var rec models.WaterTestRecord
+	var dxCtxJSON sql.NullString
 	var ph, kh, gh, temp, no2, no3, nh4, o2, o2sat, co2 sql.NullFloat64
 	var notes sql.NullString
 	var symJSON string
 	err := scan(
 		&rec.ID,
 		&rec.TankID,
+		&dxCtxJSON,
 		&ph,
 		&kh,
 		&gh,
@@ -127,6 +139,15 @@ func scanWaterTestRow(scan func(dest ...any) error) (models.WaterTestRecord, err
 	)
 	if err != nil {
 		return models.WaterTestRecord{}, err
+	}
+	if dxCtxJSON.Valid && strings.TrimSpace(dxCtxJSON.String) != "" {
+		var dc models.DiagnosisContext
+		if err := json.Unmarshal([]byte(dxCtxJSON.String), &dc); err != nil {
+			return models.WaterTestRecord{}, fmt.Errorf("diagnosis_context_json: %w", err)
+		}
+		if dc.HasAny() {
+			rec.DiagnosisContext = &dc
+		}
 	}
 	rec.PH = ptrFloat64(ph)
 	rec.KhDKH = ptrFloat64(kh)

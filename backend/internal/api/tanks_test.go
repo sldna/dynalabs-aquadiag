@@ -178,11 +178,11 @@ func TestTanks_ListIncludesLightweightSummary(t *testing.T) {
 	}
 
 	ph := 7.2
-	wt1, err := db.InsertWaterTest(ctx, sqlDB, summaryTankID, models.WaterTestInput{PH: &ph}, []string{})
+	wt1, err := db.InsertWaterTest(ctx, sqlDB, summaryTankID, models.WaterTestInput{PH: &ph}, []string{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wt2, err := db.InsertWaterTest(ctx, sqlDB, summaryTankID, models.WaterTestInput{}, []string{"gasping"})
+	wt2, err := db.InsertWaterTest(ctx, sqlDB, summaryTankID, models.WaterTestInput{}, []string{"gasping"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,11 +306,11 @@ func TestWaterTests_List_Delete_Order(t *testing.T) {
 	}
 
 	n := 7.0
-	wt1, err := db.InsertWaterTest(ctx, sqlDB, tankID, models.WaterTestInput{PH: &n}, []string{})
+	wt1, err := db.InsertWaterTest(ctx, sqlDB, tankID, models.WaterTestInput{PH: &n}, []string{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wt2, err := db.InsertWaterTest(ctx, sqlDB, tankID, models.WaterTestInput{}, []string{"algae"})
+	wt2, err := db.InsertWaterTest(ctx, sqlDB, tankID, models.WaterTestInput{}, []string{"algae"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -399,7 +399,7 @@ func TestTankDelete_RemovesWaterTestsAndDiagnosisResults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wtID, err := db.InsertWaterTest(ctx, sqlDB, tankID, models.WaterTestInput{}, []string{})
+	wtID, err := db.InsertWaterTest(ctx, sqlDB, tankID, models.WaterTestInput{}, []string{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -472,7 +472,7 @@ func TestWaterTestDelete_RemovesDiagnosisResults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wtID, err := db.InsertWaterTest(ctx, sqlDB, tankID, models.WaterTestInput{}, []string{})
+	wtID, err := db.InsertWaterTest(ctx, sqlDB, tankID, models.WaterTestInput{}, []string{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

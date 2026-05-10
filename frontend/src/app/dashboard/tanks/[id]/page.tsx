@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { DashboardNav } from "@/components/DashboardNav";
+import { Card, PageContainer } from "@/components/layout";
 import { DeleteTankDialog } from "@/components/tanks/DeleteTankDialog";
 import { WaterMeasurementsSection } from "@/components/tanks/WaterMeasurementsSection";
 import { serverFetchBase } from "@/lib/api-base";
@@ -78,31 +78,28 @@ export default async function TankDetailPage({ params }: RouteParams) {
   const result = await loadTank(id);
 
   return (
-    <>
-      <DashboardNav active="tanks" />
-      <main className="mx-auto flex min-h-0 max-w-lg flex-col gap-6 px-4 py-6">
-        <Link
-          href="/dashboard/tanks"
-          className="text-sm text-aqua-blue underline decoration-aqua-blue/40"
-        >
-          ← Zurück zur Beckenliste
-        </Link>
+    <PageContainer>
+      <Link
+        href="/dashboard/tanks"
+        className="text-sm text-aqua-blue underline decoration-aqua-blue/40"
+      >
+        ← Zurück zur Beckenliste
+      </Link>
 
-        {result.kind === "invalid_id" ? (
-          <NotFoundPanel reason="Ungültige Becken-ID." />
-        ) : result.kind === "not_found" ? (
-          <NotFoundPanel reason="Becken nicht gefunden." />
-        ) : result.kind === "error" ? (
-          <ErrorPanel message={result.message} />
-        ) : (
-          <TankDetail
-            tank={result.tank}
-            lastMeasurementAt={result.lastMeasurementAt}
-            waterTests={result.waterTests}
-          />
-        )}
-      </main>
-    </>
+      {result.kind === "invalid_id" ? (
+        <NotFoundPanel reason="Ungültige Becken-ID." />
+      ) : result.kind === "not_found" ? (
+        <NotFoundPanel reason="Becken nicht gefunden." />
+      ) : result.kind === "error" ? (
+        <ErrorPanel message={result.message} />
+      ) : (
+        <TankDetail
+          tank={result.tank}
+          lastMeasurementAt={result.lastMeasurementAt}
+          waterTests={result.waterTests}
+        />
+      )}
+    </PageContainer>
   );
 }
 
@@ -129,45 +126,42 @@ function TankDetail({
         <p className="text-sm text-aqua-deep/75">{tank.volume_liters} l · ID {tank.id}</p>
       </header>
 
-      <section
-        className="rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card"
-        aria-label="Becken-Details"
-      >
-        <dl className="grid grid-cols-1 gap-3 text-sm">
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
-              Volumen
-            </dt>
-            <dd className="mt-0.5 text-aqua-deep">{tank.volume_liters} l</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
-              Letzte Messung
-            </dt>
-            <dd className="mt-0.5 text-aqua-deep">
-              {lastDate ?? "—"}
-            </dd>
-          </div>
-          {createdDate ? (
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <Card as="section" aria-label="Becken-Details">
+          <dl className="grid grid-cols-1 gap-3 text-sm">
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
-                Angelegt
+                Volumen
               </dt>
-              <dd className="mt-0.5 text-aqua-deep">{createdDate}</dd>
+              <dd className="mt-0.5 text-aqua-deep">{tank.volume_liters} l</dd>
             </div>
-          ) : null}
-          {notes ? (
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
-                Notizen
+                Letzte Messung
               </dt>
-              <dd className="mt-0.5 whitespace-pre-wrap text-aqua-deep">{notes}</dd>
+              <dd className="mt-0.5 text-aqua-deep">{lastDate ?? "—"}</dd>
             </div>
-          ) : null}
-        </dl>
-      </section>
+            {createdDate ? (
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
+                  Angelegt
+                </dt>
+                <dd className="mt-0.5 text-aqua-deep">{createdDate}</dd>
+              </div>
+            ) : null}
+            {notes ? (
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
+                  Notizen
+                </dt>
+                <dd className="mt-0.5 whitespace-pre-wrap text-aqua-deep">{notes}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </Card>
 
-      <WaterMeasurementsSection tankId={tank.id} waterTests={waterTests} />
+        <WaterMeasurementsSection tankId={tank.id} waterTests={waterTests} />
+      </div>
 
       <section className="space-y-2" aria-label="Aktionen">
         <Link
@@ -184,7 +178,7 @@ function TankDetail({
 
 function NotFoundPanel({ reason }: { reason: string }) {
   return (
-    <section className="rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card">
+    <Card as="section">
       <h1 className="text-base font-semibold text-aqua-deep">{reason}</h1>
       <p className="mt-2 text-sm text-aqua-deep/75">
         Das gewünschte Becken existiert nicht (mehr).
@@ -195,7 +189,7 @@ function NotFoundPanel({ reason }: { reason: string }) {
       >
         Zur Beckenliste
       </Link>
-    </section>
+    </Card>
   );
 }
 

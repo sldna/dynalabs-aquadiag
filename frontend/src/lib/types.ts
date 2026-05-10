@@ -19,6 +19,7 @@ export type TanksListResponse = {
 export type WaterTest = {
   id: number;
   tank_id: number;
+  diagnosis_context?: DiagnosisContext | null;
   ph?: number | null;
   kh_dkh?: number | null;
   gh_dgh?: number | null;
@@ -59,6 +60,18 @@ export type DiagnosisItem = {
 
 export type DiagnosisStatus = "matched" | "unknown";
 
+/** Optional structured aquarium context for POST /v1/diagnose (echoed as considered_context when set). */
+export type DiagnosisContext = {
+  tank_age_days?: number;
+  recent_water_change?: boolean;
+  recent_filter_cleaning?: boolean;
+  co2_enabled?: boolean;
+  high_stocking_density?: boolean;
+  heavy_feeding?: boolean;
+  many_dead_plants?: boolean;
+  new_animals_recently?: boolean;
+};
+
 export type DiagnosisMeta = {
   rule_engine_version: string;
   evaluated_rules: number;
@@ -85,6 +98,7 @@ export type DiagnoseMatchedResponse = {
   top_diagnosis: DiagnosisItem | null;
   diagnoses: DiagnosisItem[];
   matched_rules: string[];
+  considered_context?: DiagnosisContext;
   ai_explanation?: AIExplanation | null;
   meta: DiagnosisMeta;
 };
@@ -96,6 +110,7 @@ export type DiagnoseUnknownResponse = {
   top_diagnosis?: DiagnosisItem | null;
   diagnoses?: DiagnosisItem[];
   matched_rules?: string[];
+  considered_context?: DiagnosisContext;
   ai_explanation?: AIExplanation | null;
   meta?: DiagnosisMeta;
 };

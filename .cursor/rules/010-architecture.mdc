@@ -1,0 +1,60 @@
+---
+description: AquaDiag architecture and source-of-truth rules
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# AquaDiag Architecture
+
+AquaDiag uses:
+
+- Go backend
+- REST API
+- SQLite by default
+- optional PostgreSQL later
+- YAML rule engine
+- AI explanation service
+- Next.js frontend
+- Docker Compose
+- CI/CD workflow
+
+## Diagnosis Pipeline
+
+The diagnosis pipeline remains deterministic-first.
+
+Flow:
+
+1. User submits tank, symptoms and optional water values.
+2. Backend validates input.
+3. Backend stores relevant tank/water-test/diagnosis data.
+4. Rule engine evaluates deterministic YAML rules.
+5. Highest scoring diagnoses are selected.
+6. AI explanation service converts deterministic output into user-friendly explanation.
+7. Result is stored and returned to the frontend.
+
+## Source Of Truth
+
+The rule engine is the source of truth.
+
+AI may explain, summarize and clarify.
+AI must not decide or override:
+
+- diagnosis type
+- severity
+- confidence
+- matched rules
+- actions now
+- optional actions
+- avoid actions
+
+## Local-First And Deployable
+
+The app must remain easy to run locally.
+
+Requirements:
+- Docker Compose runs the full app
+- SQLite works by default
+- AI can be disabled by configuration
+- no cloud dependency is required for basic local operation
+- deployment improvements must not break local development
