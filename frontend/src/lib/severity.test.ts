@@ -5,6 +5,7 @@ import {
   SEVERITIES,
   severityClasses,
   severityColor,
+  severityHeroAccent,
   type Severity,
 } from "./severity";
 
@@ -53,19 +54,19 @@ describe("severityColor", () => {
 describe("severityClasses", () => {
   it("returns the expected Tailwind class set per severity", () => {
     expect(severityClasses("info").badge).toBe(
-      "bg-status-info/15 text-status-info ring-status-info/30",
+      "bg-status-info/22 text-status-info ring-2 ring-status-info/45 shadow-sm",
     );
     expect(severityClasses("low").badge).toBe(
-      "bg-status-success/15 text-status-success ring-status-success/30",
+      "bg-status-success/22 text-status-success ring-2 ring-status-success/45 shadow-sm",
     );
     expect(severityClasses("medium").badge).toBe(
-      "bg-status-warning/25 text-aqua-deep ring-status-warning/40",
+      "bg-status-warning/35 text-aqua-deep ring-2 ring-status-warning/55 shadow-sm",
     );
     expect(severityClasses("high").badge).toBe(
-      "bg-status-alert/15 text-status-alert ring-status-alert/35",
+      "bg-status-alert/22 text-status-alert ring-2 ring-status-alert/50 shadow-sm",
     );
     expect(severityClasses("critical").badge).toBe(
-      "bg-status-critical/15 text-status-critical ring-status-critical/35",
+      "bg-status-critical/22 text-status-critical ring-2 ring-status-critical/50 shadow-sm",
     );
   });
 
@@ -73,10 +74,17 @@ describe("severityClasses", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       expect(severityClasses("xyz").badge).toBe(
-        "bg-aqua-sand text-aqua-deep ring-aqua-deep/20",
+        "bg-aqua-sand text-aqua-deep ring-2 ring-aqua-deep/30 shadow-sm",
       );
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+describe("severityHeroAccent", () => {
+  it("maps severities to a left stripe accent class string", () => {
+    expect(severityHeroAccent("critical").wrap).toContain("border-l-status-critical");
+    expect(severityHeroAccent("info").wrap).toContain("border-l-status-info");
   });
 });

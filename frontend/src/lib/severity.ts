@@ -42,22 +42,27 @@ export type SeverityBadgeClasses = {
 // content scanner picks them up without a safelist.
 const COLOR_TO_CLASSES: Record<SeverityColor, SeverityBadgeClasses> = {
   blue: {
-    badge: "bg-status-info/15 text-status-info ring-status-info/30",
+    badge:
+      "bg-status-info/22 text-status-info ring-2 ring-status-info/45 shadow-sm",
   },
   green: {
-    badge: "bg-status-success/15 text-status-success ring-status-success/30",
+    badge:
+      "bg-status-success/22 text-status-success ring-2 ring-status-success/45 shadow-sm",
   },
   yellow: {
-    badge: "bg-status-warning/25 text-aqua-deep ring-status-warning/40",
+    badge:
+      "bg-status-warning/35 text-aqua-deep ring-2 ring-status-warning/55 shadow-sm",
   },
   orange: {
-    badge: "bg-status-alert/15 text-status-alert ring-status-alert/35",
+    badge:
+      "bg-status-alert/22 text-status-alert ring-2 ring-status-alert/50 shadow-sm",
   },
   red: {
-    badge: "bg-status-critical/15 text-status-critical ring-status-critical/35",
+    badge:
+      "bg-status-critical/22 text-status-critical ring-2 ring-status-critical/50 shadow-sm",
   },
   slate: {
-    badge: "bg-aqua-sand text-aqua-deep ring-aqua-deep/20",
+    badge: "bg-aqua-sand text-aqua-deep ring-2 ring-aqua-deep/30 shadow-sm",
   },
 };
 
@@ -83,6 +88,36 @@ export function severityColor(severity: string): SeverityColor {
 /** Tailwind class set for a severity (single source of truth). */
 export function severityClasses(severity: string): SeverityBadgeClasses {
   return COLOR_TO_CLASSES[severityColor(severity)];
+}
+
+/** Left accent stripe + subtle tinted panel for hero diagnosis cards. */
+export type SeverityHeroAccentClasses = {
+  wrap: string;
+};
+
+const COLOR_TO_HERO_ACCENT: Record<SeverityColor, SeverityHeroAccentClasses> = {
+  blue: {
+    wrap: "border-l-[6px] border-l-status-info bg-status-info/[0.07]",
+  },
+  green: {
+    wrap: "border-l-[6px] border-l-status-success bg-status-success/[0.08]",
+  },
+  yellow: {
+    wrap: "border-l-[6px] border-l-status-warning bg-status-warning/[0.12]",
+  },
+  orange: {
+    wrap: "border-l-[6px] border-l-status-alert bg-status-alert/[0.08]",
+  },
+  red: {
+    wrap: "border-l-[6px] border-l-status-critical bg-status-critical/[0.08]",
+  },
+  slate: {
+    wrap: "border-l-[6px] border-l-aqua-deep/25 bg-aqua-soft/80",
+  },
+};
+
+export function severityHeroAccent(severity: string): SeverityHeroAccentClasses {
+  return COLOR_TO_HERO_ACCENT[severityColor(severity)];
 }
 
 const warnedUnknown = new Set<string>();
