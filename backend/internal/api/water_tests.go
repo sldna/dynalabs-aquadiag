@@ -6,7 +6,39 @@ import (
 	"strings"
 
 	"aquadiag/backend/internal/db"
+	"aquadiag/backend/internal/models"
+	"aquadiag/backend/internal/waterquality"
 )
+
+// waterTestResponse extends a persisted water test with the traffic-light
+// assessment used by the UI. The assessment is computed on read; it is not
+// persisted because it is fully deterministic from the measured values.
+type waterTestResponse struct {
+	models.WaterTestRecord
+	WaterQualityStatus waterquality.Status `json:"water_quality_status"`
+	WaterQualityItems  []waterquality.Item `json:"water_quality_items"`
+}
+
+func enrichWaterTest(rec models.WaterTestRecord) waterTestResponse {
+	a := waterquality.EvaluateWaterTest(rec)
+	items := a.Items
+	if items == nil {
+		items = []waterquality.Item{}
+	}
+	return waterTestResponse{
+		WaterTestRecord:    rec,
+		WaterQualityStatus: a.Status,
+		WaterQualityItems:  items,
+	}
+}
+
+func enrichWaterTests(recs []models.WaterTestRecord) []waterTestResponse {
+	out := make([]waterTestResponse, 0, len(recs))
+	for _, r := range recs {
+		out = append(out, enrichWaterTest(r))
+	}
+	return out
+}
 
 func (s *Server) routeV1WaterTests(w http.ResponseWriter, r *http.Request) {
 	if s.db == nil {
@@ -43,7 +75,7 @@ func (s *Server) routeV1WaterTests(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusInternalServerError, "database_error", "Wassertest konnte nicht geladen werden.")
 			return
 		}
-		writeJSON(w, http.StatusOK, rec)
+		writeJSON(w, http.StatusOK, enrichWaterTest(rec))
 
 	case http.MethodDelete:
 		tx, err := s.db.BeginTx(r.Context(), nil)

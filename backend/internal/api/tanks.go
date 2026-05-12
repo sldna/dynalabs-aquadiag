@@ -327,5 +327,5 @@ func (s *Server) handleTankWaterTests(w http.ResponseWriter, r *http.Request, ta
 		writeJSONError(w, http.StatusInternalServerError, "database_error", "Wassertests konnten nicht geladen werden.")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"water_tests": tests})
+	writeJSON(w, http.StatusOK, map[string]any{"water_tests": enrichWaterTests(tests)})
 }

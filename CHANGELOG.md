@@ -8,6 +8,18 @@ und wir verwenden [Semantic Versioning](https://semver.org/lang/de/).
 ## [Unreleased]
 
 ### Added
+- **M3.5 Ampelsystem für Wasserwerte**: Water-Test-Responses enthalten
+  zusätzlich `water_quality_status` (`green`/`yellow`/`red`/`unknown`) und
+  `water_quality_items[]` mit Label, Wert, Status, kurzer Erklärung und
+  optionaler Kurzempfehlung. Frontend zeigt Ampel-Badge in der Messwert-
+  Historie und eine zusammenfassende Karte auf der Detailseite.
+  - Backend: neues Paket `backend/internal/waterquality` mit konservativen
+    Schwellwerten (`evaluator.go`) und Tests
+  - API: `GET /v1/water-tests/{id}` und `GET /v1/tanks/{id}/water-tests`
+    liefern die neuen Felder; nicht persistiert
+  - Frontend: Komponenten `WaterQualityBadge`, `WaterQualitySummary`,
+    `WaterQualityItemCard`; integriert in Tank-Detail und Water-Test-Detail
+  - Diagnoseentscheidung der Regel-Engine bleibt **unverändert**
 - Open-Source-Launch-Vorbereitung (Phase M4):
   - `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`
   - GitHub Issue- & PR-Templates (`.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`)
