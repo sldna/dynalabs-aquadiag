@@ -83,16 +83,10 @@ Diagnose mit klaren nächsten Schritten erhalten.
 | Diagnose-Ergebnis  | `docs/screenshots/diagnosis.png`   |
 | Tank-Detail        | `docs/screenshots/tank-detail.png` |
 
-<details>
-<summary>Beispiel-Markup, sobald die Dateien vorhanden sind</summary>
 
-```markdown
 ![Dashboard](docs/screenshots/dashboard.png)
 ![Diagnose-Ergebnis](docs/screenshots/diagnosis.png)
 ![Tank-Detail](docs/screenshots/tank-detail.png)
-```
-
-</details>
 
 ## Quick Start
 
