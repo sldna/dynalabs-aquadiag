@@ -125,23 +125,25 @@ func OverallStatus(items []Item) Status {
 // --- individual evaluators -------------------------------------------------
 
 // nitriteDetectionLimit is the lowest reliably resolvable NO₂ value for the
-// usual hobby drop tests (JBL, Sera, Tetra etc.): ~0.01 mg/l. Values below
-// this are effectively "not detectable" and stay green; from 0.01 mg/l upward
-// any detection is at minimum yellow because nitrite is acutely toxic.
+// usual hobby drop tests (JBL, Sera, Tetra etc.): ~0.01 mg/l. Values up to
+// and including this limit are reported as "<0,01 mg/l" by the kit and are
+// effectively "not detectable", so they stay green. The next visible test
+// step (typically 0,025 mg/l) and anything above is a real detection and
+// triggers at least yellow because nitrite is acutely toxic.
 const nitriteDetectionLimit = 0.01
 
-// evalNitrite: below the test-kit detection limit -> green. Detectable but
-// not yet red (< 0.25 mg/l) -> yellow. >= 0.25 mg/l -> red.
+// evalNitrite: at or below the test-kit detection limit -> green. Clearly
+// above the detection limit but below 0.25 mg/l -> yellow. >= 0.25 mg/l -> red.
 func evalNitrite(v float64) Item {
 	const key = "no2"
 	const label = "Nitrit (NO₂)"
 	const unit = "mg/l"
 	switch {
-	case v < nitriteDetectionLimit:
+	case v <= nitriteDetectionLimit:
 		return Item{
 			Key: key, Label: label, Value: v, Unit: unit,
 			Status:  StatusGreen,
-			Message: "Nicht nachweisbar – unauffällig.",
+			Message: "An oder unter der Nachweisgrenze – unauffällig.",
 		}
 	case v < 0.25:
 		return Item{

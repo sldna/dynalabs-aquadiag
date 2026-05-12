@@ -292,10 +292,11 @@ als zusammenfassende Karte dargestellt.
 
 Grundregeln der Heuristik:
 
-- **NO₂** ist die strengste Größe: jeder über der Nachweisgrenze hobbyüblicher
-  Tropfentests messbare Wert (≥ 0,01 mg/l) ist mindestens `yellow`, deutliche
-  Erhöhung (≥ 0,25 mg/l) ist `red`. Werte darunter liegen unterhalb der
-  Auflösung der üblichen Tests und bleiben `green`.
+- **NO₂** ist die strengste Größe: Werte *an oder unterhalb* der Nachweisgrenze
+  hobbyüblicher Tropfentests (≤ 0,01 mg/l, typisch als „<0,01 mg/l“ ablesbar)
+  bleiben `green`. Jeder klar darüber liegende Messwert (z. B. der nächste
+  Skalenschritt 0,025 mg/l) ist mindestens `yellow`, deutliche Erhöhung
+  (≥ 0,25 mg/l) ist `red`.
 - **NH₃/NH₄⁺** wird konservativ bewertet (ohne pH/Temperatur-Korrektur).
 - **Temperatur, pH, KH, GH** verwenden absichtlich breite, anfängerfreundliche
   Bänder, um Fehlalarme zu vermeiden.

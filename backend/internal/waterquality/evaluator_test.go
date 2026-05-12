@@ -71,29 +71,36 @@ func TestEvaluateWaterTest_NitriteCriticalDrivesRed(t *testing.T) {
 	}
 }
 
-func TestEvaluateWaterTest_NitriteAnyDetectableIsAtLeastYellow(t *testing.T) {
+func TestEvaluateWaterTest_NitriteAtOrBelowDetectionLimitStaysGreen(t *testing.T) {
 	// 0.01 mg/l ist der typische Nachweis-Grenzwert hobbyüblicher Tropfentests
-	// (z. B. JBL, Sera, Tetra). Genau an dieser Schwelle muss die Bewertung
-	// auf yellow umschlagen – darunter ist faktisch "nicht nachweisbar".
-	rec := models.WaterTestRecord{NitriteMgL: ptrF(0.01)}
-	a := EvaluateWaterTest(rec)
-	if a.Status != StatusYellow {
-		t.Fatalf("overall=%q want yellow", a.Status)
-	}
-	it, _ := findItem(a.Items, "no2")
-	if it.Status != StatusYellow {
-		t.Fatalf("no2.status=%q want yellow", it.Status)
-	}
-}
-
-func TestEvaluateWaterTest_NitriteBelowDetectionLimitStaysGreen(t *testing.T) {
-	// Werte unter 0.01 mg/l liegen unter der Nachweisgrenze üblicher
-	// Tropfentests und sollen den Test nicht künstlich auf yellow ziehen.
-	for _, v := range []float64{0, 0.005, 0.009} {
+	// (z. B. JBL, Sera, Tetra). Werte an oder unterhalb dieser Grenze meldet
+	// der Test als "<0,01 mg/l" und sollen weiterhin als unauffällig gelten.
+	for _, v := range []float64{0, 0.005, 0.009, 0.01} {
 		rec := models.WaterTestRecord{NitriteMgL: ptrF(v)}
 		a := EvaluateWaterTest(rec)
 		if a.Status != StatusGreen {
 			t.Fatalf("v=%v overall=%q want green", v, a.Status)
+		}
+		it, _ := findItem(a.Items, "no2")
+		if it.Status != StatusGreen {
+			t.Fatalf("v=%v no2.status=%q want green", v, it.Status)
+		}
+	}
+}
+
+func TestEvaluateWaterTest_NitriteAboveDetectionLimitIsYellow(t *testing.T) {
+	// Der nächste sichtbare Messschritt typischer Tropfentests ist 0,025 mg/l
+	// (JBL/Sera Skala). Dieser Wert ist eine echte Nachweisreaktion und muss
+	// mindestens yellow ergeben.
+	for _, v := range []float64{0.011, 0.025, 0.05, 0.1, 0.2} {
+		rec := models.WaterTestRecord{NitriteMgL: ptrF(v)}
+		a := EvaluateWaterTest(rec)
+		if a.Status != StatusYellow {
+			t.Fatalf("v=%v overall=%q want yellow", v, a.Status)
+		}
+		it, _ := findItem(a.Items, "no2")
+		if it.Status != StatusYellow {
+			t.Fatalf("v=%v no2.status=%q want yellow", v, it.Status)
 		}
 	}
 }
