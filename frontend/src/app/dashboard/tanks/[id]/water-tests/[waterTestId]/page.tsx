@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { DashboardNav } from "@/components/DashboardNav";
 import { PageContainer } from "@/components/layout";
 import { DeleteWaterTestDialog } from "@/components/tanks/DeleteWaterTestDialog";
+import { WaterQualitySummary } from "@/components/water-quality";
 import { serverFetchBase } from "@/lib/api-base";
 import { formatDateTimeDE } from "@/lib/date";
 import type { Tank, WaterTest } from "@/lib/types";
@@ -159,36 +160,43 @@ function DetailBody({ tank, test }: { tank: Tank; test: WaterTest }) {
       </header>
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start lg:gap-8">
-        <section
-          className="rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card sm:p-5"
-          aria-label="Messwerte"
-        >
-          {rows.length > 0 ? (
-            <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 md:gap-x-8">
-              {rows.map((row) => (
-                <div key={row.label}>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
-                    {row.label}
-                  </dt>
-                  <dd className="mt-0.5 text-aqua-deep">{row.value}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : (
-            <p className="text-sm text-aqua-deep/75">
-              Keine Messwerte oder Symptome erfasst.
-            </p>
-          )}
+        <div className="space-y-4">
+          <WaterQualitySummary
+            status={test.water_quality_status}
+            items={test.water_quality_items}
+          />
 
-          {notes ? (
-            <div className="mt-4 border-t border-aqua-deep/10 pt-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
-                Notizen
+          <section
+            className="rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card sm:p-5"
+            aria-label="Messwerte"
+          >
+            {rows.length > 0 ? (
+              <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 md:gap-x-8">
+                {rows.map((row) => (
+                  <div key={row.label}>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
+                      {row.label}
+                    </dt>
+                    <dd className="mt-0.5 text-aqua-deep">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="text-sm text-aqua-deep/75">
+                Keine Messwerte oder Symptome erfasst.
               </p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-aqua-deep">{notes}</p>
-            </div>
-          ) : null}
-        </section>
+            )}
+
+            {notes ? (
+              <div className="mt-4 border-t border-aqua-deep/10 pt-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-aqua-deep/55">
+                  Notizen
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-aqua-deep">{notes}</p>
+              </div>
+            ) : null}
+          </section>
+        </div>
 
         <aside className="mt-6 space-y-3 lg:mt-0">
           <Link

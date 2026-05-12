@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { WaterQualityBadge } from "@/components/water-quality";
 import { formatDateTimeDE } from "@/lib/date";
 import { measurementRowsForWaterTest } from "@/lib/water-test-rows";
 import type { WaterTest } from "@/lib/types";
@@ -23,9 +24,12 @@ export function WaterTestMeasurementCard({ tankId, test }: WaterTestMeasurementC
       aria-label={when ? `Messung vom ${when}` : "Messung"}
     >
       <header className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-aqua-deep">
-          {when ?? "—"}
-        </p>
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="text-sm font-semibold text-aqua-deep">
+            {when ?? "—"}
+          </p>
+          <WaterQualityBadge status={test.water_quality_status} />
+        </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <Link
             href={`/dashboard/tanks/${tankId}/water-tests/${test.id}`}

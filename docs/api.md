@@ -96,18 +96,78 @@ gesetzt sein. `notes: null` löscht den Notizinhalt.
 Antwort:
 
 ```json
-{ "water_tests": [ { "id": 17, "tank_id": 3, "...": "..." } ] }
+{
+  "water_tests": [
+    {
+      "id": 17,
+      "tank_id": 3,
+      "nitrite_mg_l": 0.4,
+      "ph": 7.2,
+      "symptoms": [],
+      "created_at": "2026-05-08T12:00:00Z",
+      "water_quality_status": "red",
+      "water_quality_items": [
+        {
+          "key": "no2",
+          "label": "Nitrit (NO₂)",
+          "value": 0.4,
+          "unit": "mg/l",
+          "status": "red",
+          "message": "Nitrit deutlich erhöht – akut kritisch für Fische.",
+          "recommendation_short": "Sofort 30–50 % Wasserwechsel, nicht füttern."
+        },
+        {
+          "key": "ph",
+          "label": "pH-Wert",
+          "value": 7.2,
+          "status": "green",
+          "message": "Im typischen Bereich für Süßwasseraquarien."
+        }
+      ]
+    }
+  ]
+}
 ```
 
 Sortierung: neueste zuerst (`id DESC`).
 
 ### `GET /v1/water-tests/{id}`
 
-Eine Messung inkl. `symptoms` (decoded aus `symptoms_json`).
+Eine Messung inkl. `symptoms` (decoded aus `symptoms_json`) sowie der
+deterministischen Ampel-Felder `water_quality_status` und
+`water_quality_items[]` (siehe unten).
 
 ### `DELETE /v1/water-tests/{id}`
 
 `204` bei Erfolg. Entfernt abhängige `diagnosis_results` mit.
+
+### Ampelsystem (M3.5)
+
+Jede Water-Test-Antwort enthält zusätzlich eine **Orientierungs-Ampel**:
+
+- `water_quality_status` (`string`): Gesamtstatus über alle gemessenen Werte.
+  Mögliche Werte: `green`, `yellow`, `red`, `unknown`.
+- `water_quality_items[]`: pro bewertetem Wert ein Eintrag mit
+  `key`, `label`, `value`, `unit`, `status`, `message`, optional
+  `recommendation_short`.
+
+Ableitung des Gesamtstatus:
+
+| Bedingung                                              | Status     |
+|--------------------------------------------------------|------------|
+| mindestens ein Item ist `red`                          | `red`      |
+| kein `red`, mindestens ein `yellow`                    | `yellow`   |
+| alle bewertbaren Items sind `green`                    | `green`    |
+| kein einziger Wert wurde gemessen                      | `unknown`  |
+
+Wichtig:
+
+- Das Ampelsystem ist eine **Orientierung**, keine tierärztliche Diagnose
+  und kein Ersatz für die deterministische Regel-Engine. Die Diagnose-Engine
+  und `POST /v1/diagnose` bleiben unverändert.
+- Die Werte werden auf Lesepfad berechnet und **nicht persistiert**.
+- Grenzwerte sind konservative MVP-Heuristiken (`backend/internal/waterquality/evaluator.go`).
+- Fehlende Werte erzeugen kein Item und keinen Fehler.
 
 ---
 

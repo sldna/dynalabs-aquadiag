@@ -40,6 +40,7 @@ Diagnose mit klaren nächsten Schritten erhalten.
 - [Project Structure](#project-structure)
 - [Configuration Reference](#configuration-reference)
 - [API Overview](#api-overview)
+- [Ampelsystem für Wasserwerte (M3.5)](#ampelsystem-für-wasserwerte-m35)
 - [Severity-Werte](#severity-werte)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
@@ -55,6 +56,9 @@ Diagnose mit klaren nächsten Schritten erhalten.
   verwaiste Datensätze
 - **Wassertest-Historie** pro Becken (neueste zuerst), inklusive Symptome und
   Diagnoseverknüpfung
+- **Ampelsystem für Wasserwerte** (M3.5): jede Messung erhält zusätzlich eine
+  einfache Grün/Gelb/Rot-Einschätzung pro Wert und für die Messung gesamt –
+  als Orientierung, ohne die deterministische Diagnose zu verändern
 - **Landing & Branding**: Startseite (`/`) mit Hero, Nutzenkarten, Ablauf und
   Vertrauens-/Sicherheitshinweisen; Header mit Logo und Schriftzug
   „Dynalabs AquaDiag“; CTAs zur Analyse und Beckenübersicht
@@ -271,6 +275,39 @@ curl -sS -X POST "http://localhost:8080/v1/diagnose" \
   }' | jq '{ status, top_rule: .top_diagnosis.rule_id, meta }'
 ```
 
+## Ampelsystem für Wasserwerte (M3.5)
+
+Jeder Wassertest erhält zusätzlich zur Diagnose eine einfache Ampel-Bewertung
+pro Messwert und für die Messung gesamt. Die Bewertung erscheint in den
+Response-Feldern `water_quality_status` und `water_quality_items[]` (siehe
+[`docs/api.md`](docs/api.md)) und wird in der UI als kompaktes Badge sowie
+als zusammenfassende Karte dargestellt.
+
+| Status     | Bedeutung                                           | UI-Tonalität |
+|------------|-----------------------------------------------------|--------------|
+| `green`    | Unauffällig im konservativen Anfängerbereich        | Erfolg/Grün  |
+| `yellow`   | Beobachten – außerhalb des Optimalbereichs          | Hinweis/Gelb |
+| `red`      | Kritisch – zeitnah eingreifen                       | Kritisch/Rot |
+| `unknown`  | Nicht bewertet (z. B. wenn keine Werte gemessen wurden) | Neutral      |
+
+Grundregeln der Heuristik:
+
+- **NO₂** ist die strengste Größe: jeder über der Nachweisgrenze hobbyüblicher
+  Tropfentests messbare Wert (≥ 0,01 mg/l) ist mindestens `yellow`, deutliche
+  Erhöhung (≥ 0,25 mg/l) ist `red`. Werte darunter liegen unterhalb der
+  Auflösung der üblichen Tests und bleiben `green`.
+- **NH₃/NH₄⁺** wird konservativ bewertet (ohne pH/Temperatur-Korrektur).
+- **Temperatur, pH, KH, GH** verwenden absichtlich breite, anfängerfreundliche
+  Bänder, um Fehlalarme zu vermeiden.
+
+> [!IMPORTANT]
+> Das Ampelsystem ist eine **Orientierung anhand der Messwerte** – kein
+> Ersatz für tierärztliche Diagnostik. Die Diagnoseentscheidung der
+> deterministischen Regel-Engine bleibt davon unberührt.
+
+Quelle der Wahrheit für die Grenzwerte:
+[`backend/internal/waterquality/evaluator.go`](backend/internal/waterquality/evaluator.go).
+
 ## Severity-Werte
 
 Identisch über Backend, API und Frontend:
@@ -292,6 +329,7 @@ AquaDiag bleibt bewusst klein. Geplante Etappen:
 
 - [x] **MVP**: Tank-Management, Diagnose, YAML-Regelbasis, AI optional
 - [x] **M3**: Erklärbarkeit & Scoring der Regel-Engine
+- [x] **M3.5**: Ampelsystem für Wasserwerte (Orientierungsschicht, keine Diagnoseänderung)
 - [ ] **M4**: Open-Source-Launch (diese Phase) – Doku, DX, CI, Templates
 - [ ] **AI Improvements**: bessere Erklärungen, mehrsprachig
 - [ ] **Better Rules**: erweiterte Regelpakete in `rules/v1/`

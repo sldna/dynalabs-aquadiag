@@ -16,6 +16,26 @@ export type TanksListResponse = {
   tanks: Tank[];
 };
 
+/**
+ * Traffic-light status for an individual water value or the whole water test.
+ * Mirrors backend/internal/waterquality.Status.
+ */
+export type WaterQualityStatus = "green" | "yellow" | "red" | "unknown";
+
+/**
+ * One classified water value as returned by the backend assessment.
+ * Mirrors backend/internal/waterquality.Item.
+ */
+export type WaterQualityItem = {
+  key: string;
+  label: string;
+  value: number;
+  unit?: string;
+  status: WaterQualityStatus;
+  message: string;
+  recommendation_short?: string;
+};
+
 export type WaterTest = {
   id: number;
   tank_id: number;
@@ -32,6 +52,10 @@ export type WaterTest = {
   symptoms: string[];
   notes?: string | null;
   created_at: string;
+  /** Overall traffic-light status across all measured values (since M3.5). */
+  water_quality_status?: WaterQualityStatus;
+  /** Per-value traffic-light items (since M3.5); empty array when nothing measured. */
+  water_quality_items?: WaterQualityItem[];
 };
 
 export type WaterTestsListResponse = {
