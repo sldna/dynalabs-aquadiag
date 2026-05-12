@@ -1,37 +1,60 @@
-# Env
+# --- Environment ---------------------------------------------------
 .env
-.env.local
+.env.*
+!.env.example
+.envrc
 
-# Backend
+# --- Backend (Go) --------------------------------------------------
 /backend/api
+/backend/bin/
+/backend/dist/
 /backend/coverage.out
+/backend/coverage.html
 
-# Frontend
+# --- Frontend (Next.js / npm) --------------------------------------
 /frontend/node_modules
 /frontend/.next
 /frontend/out
+/frontend/.turbo
 /frontend/.env.local
+/frontend/.env.*.local
+/frontend/coverage
+/frontend/.vercel
 
-# OS / IDE
-.DS_Store
-*.swp
-.idea/
-.vscode/
-
-# SQLite (local dev outside Docker)
+# --- SQLite (local dev outside Docker) -----------------------------
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db-*
+*.sqlite
+*.sqlite3
+/data/
 
-# Build / test artifacts
+# --- Build / test artefacts ----------------------------------------
 *.tsbuildinfo
 coverage/
 dist/
+build/
 *.log
+*.tmp
+.cache/
 
-# Env variants
-.env.*
-!.env.example
+# --- OS / Editor ---------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+!.vscode/extensions.json
+.fleet/
 
-# SQLite variants
-*.sqlite
-*.sqlite3
-*.db-*
+# --- Secrets / Credentials (defensive) -----------------------------
+*.pem
+*.key
+*.crt
+*.p12
+credentials.json
+secrets.json

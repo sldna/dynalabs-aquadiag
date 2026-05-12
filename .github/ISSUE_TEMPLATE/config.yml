@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Sicherheitsmeldung
+    url: https://github.com/sldna/dynalabs-aquadiag/security/advisories/new
+    about: Bitte Sicherheitsthemen NICHT als öffentliches Issue eröffnen – nutze das GitHub Security Advisory.
+  - name: Allgemeine Fragen / Diskussion
+    url: https://github.com/sldna/dynalabs-aquadiag/discussions
+    about: Allgemeine Fragen, Setup-Hilfe und Ideen bitte in den Discussions.
