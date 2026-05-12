@@ -12,7 +12,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Dynalabs AquaDiag v1",
   description:
-    "Aquarienwerte verstehen. Probleme früh erkennen. Minimaler Diagnose-MVP (V1).",
+    "Schnelle Einschätzung, wenn im Aquarium etwas nicht stimmt. Entscheidungshilfe mit Symptomen, optionalen Wasserwerten und klaren Sofortmaßnahmen.",
   applicationName: "Dynalabs AquaDiag v1",
   icons: {
     icon: "/logos/favicon.svg",

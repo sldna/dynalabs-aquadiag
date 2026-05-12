@@ -55,6 +55,9 @@ Diagnose mit klaren nächsten Schritten erhalten.
   verwaiste Datensätze
 - **Wassertest-Historie** pro Becken (neueste zuerst), inklusive Symptome und
   Diagnoseverknüpfung
+- **Landing & Branding**: Startseite (`/`) mit Hero, Nutzenkarten, Ablauf und
+  Vertrauens-/Sicherheitshinweisen; Header mit Logo und Schriftzug
+  „Dynalabs AquaDiag“; CTAs zur Analyse und Beckenübersicht
 - **Mobile-first UI** im Aqua-CD-Stil (Tailwind + Inter), Actions-first
 - **Lokales SQLite** als Standard – kein DB-Server nötig
 - **Docker-Compose-Setup** für Backend, Frontend und persistente Daten
@@ -103,7 +106,7 @@ Danach erreichbar:
 
 | Dienst        | URL                                  |
 |---------------|--------------------------------------|
-| Frontend      | http://localhost:3000                |
+| Frontend      | http://localhost:3000 (Landingpage; App unter `/dashboard`) |
 | Backend Health| http://localhost:8080/health         |
 | API-Beispiel  | siehe [`docs/api.md`](docs/api.md)   |
 
@@ -200,7 +203,7 @@ Variablen (siehe `.env.example`): `AI_ENABLED`, `AI_API_KEY`, `AI_BASE_URL`
 │   ├── cmd/api/            Server-Einstieg
 │   └── internal/           api, db, rules, diagnosis, ai, models
 ├── frontend/               Next.js App Router + Tailwind
-│   ├── src/app/            Dashboard, Tanks, Diagnose
+│   ├── src/app/            Root-Landing (`page.tsx`), Dashboard, Tanks, Diagnose
 │   ├── src/components/     UI-Bausteine inkl. Severity-Mapping
 │   └── public/logos/       Markenassets
 ├── rules/                  YAML-Regelbasis (`aquarium-rules.yaml`)
