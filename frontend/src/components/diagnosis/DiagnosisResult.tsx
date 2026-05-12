@@ -6,6 +6,7 @@ import { FollowUpAnswersSection } from "@/components/diagnosis/FollowUpAnswersSe
 import { HeroDiagnosisCard } from "@/components/diagnosis/HeroDiagnosisCard";
 import { DiagnosisExplainSection } from "@/components/diagnosis/DiagnosisExplainSection";
 import { ExcludedRulesSection } from "@/components/diagnosis/ExcludedRulesSection";
+import { DiagnosisPdfExportButton } from "@/components/diagnosis/DiagnosisPdfExportButton";
 
 function pickTop(result: DiagnoseAPIResponse): DiagnosisItem | null {
   if ("top_diagnosis" in result && result.top_diagnosis) return result.top_diagnosis;
@@ -222,6 +223,13 @@ export function DiagnosisResult({
     <>
       <div className="mx-auto w-full space-y-5">
         <ResultContextHeader
+          tankSummaryLine={tankSummaryLine}
+          generatedAtLabel={generatedAtLabel}
+          diagnosisMetaLine={diagnosisMetaLine}
+        />
+
+        <DiagnosisPdfExportButton
+          result={result}
           tankSummaryLine={tankSummaryLine}
           generatedAtLabel={generatedAtLabel}
           diagnosisMetaLine={diagnosisMetaLine}

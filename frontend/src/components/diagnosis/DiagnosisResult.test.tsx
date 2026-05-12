@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { DiagnosisResult } from "./DiagnosisResult";
 
 const noopSave = vi.fn().mockResolvedValue(undefined);
 const noopReanalyze = vi.fn().mockResolvedValue(undefined);
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("DiagnosisResult unknown state", () => {
   it("renders dedicated unknown-state UI when status is unknown", () => {
@@ -250,5 +254,94 @@ describe("DiagnosisResult follow-ups", () => {
     expect(screen.getByText(/Analyse für:/i)).toBeInTheDocument();
     expect(screen.getByText(/Gamma · 60 l/)).toBeInTheDocument();
     expect(screen.getByText(/Stand:/i)).toBeInTheDocument();
+  });
+});
+
+describe("DiagnosisResult PDF export", () => {
+  it("opens a print export with the AquaDiag logo and diagnosis content", () => {
+    const written: string[] = [];
+    const printWindow = {
+      document: {
+        open: vi.fn(),
+        write: vi.fn((html: string) => written.push(html)),
+        close: vi.fn(),
+      },
+      focus: vi.fn(),
+      print: vi.fn(),
+      setTimeout: vi.fn((callback: () => void) => callback()),
+    } as unknown as Window;
+    vi.spyOn(window, "open").mockReturnValue(printWindow);
+
+    render(
+      <DiagnosisResult
+        result={{
+          status: "matched",
+          top_diagnosis: {
+            rule_id: "nitrite_poisoning_v1",
+            name: "Nitrit erhöht",
+            diagnosis_type: "nitrite_poisoning",
+            severity: "critical",
+            confidence: 0.86,
+            summary_de: "Nitrit ist stark erhöht.",
+            reasoning_de: "Der Nitritwert liegt über dem Grenzwert.",
+            actions_now: ["Teilwasserwechsel durchführen"],
+            actions_optional: ["Fütterung reduzieren"],
+            avoid: ["Keine hektischen Extremmaßnahmen"],
+            follow_up_questions_de: [],
+            safety_note_de: "Becken weiter beobachten.",
+            facts: [],
+            matched_water_values: [
+              {
+                field: "nitrite_mg_l",
+                label_de: "Nitrit",
+                value: 0.4,
+                unit: "mg/l",
+              },
+            ],
+          },
+          diagnoses: [
+            {
+              rule_id: "nitrite_poisoning_v1",
+              name: "Nitrit erhöht",
+              diagnosis_type: "nitrite_poisoning",
+              severity: "critical",
+              confidence: 0.86,
+              summary_de: "Nitrit ist stark erhöht.",
+              reasoning_de: "Der Nitritwert liegt über dem Grenzwert.",
+              actions_now: ["Teilwasserwechsel durchführen"],
+              actions_optional: ["Fütterung reduzieren"],
+              avoid: ["Keine hektischen Extremmaßnahmen"],
+              follow_up_questions_de: [],
+              safety_note_de: "Becken weiter beobachten.",
+              facts: [],
+            },
+          ],
+          matched_rules: ["nitrite_poisoning_v1"],
+          meta: {
+            rule_engine_version: "1",
+            evaluated_rules: 1,
+            matched_count: 1,
+            generated_at: "2026-05-09T07:00:00Z",
+            ai_status: "disabled",
+            diagnosis_id: 7,
+            water_test_id: 8,
+            tank_id: 9,
+          },
+        }}
+        tankSummaryLine="Wohnzimmer · 180 l"
+        saveFollowUpAnswers={noopSave}
+        onReanalyzeWithFollowUps={noopReanalyze}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Als PDF exportieren" }));
+
+    expect(window.open).toHaveBeenCalledWith("", "_blank", "width=920,height=1200");
+    expect(written).toHaveLength(1);
+    expect(written[0]).toContain("/logos/logo-full.svg");
+    expect(written[0]).toContain("Dynalabs AquaDiag v1 Logo");
+    expect(written[0]).toContain("Teilwasserwechsel durchführen");
+    expect(written[0]).toContain("Nitrit");
+    expect(printWindow.print).toHaveBeenCalled();
   });
 });
