@@ -1,0 +1,36 @@
+# Normalize line endings on checkin
+* text=auto eol=lf
+
+# Explicit text files
+*.go        text eol=lf
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.jsx       text eol=lf
+*.json      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.md        text eol=lf
+*.sh        text eol=lf
+*.css       text eol=lf
+*.html      text eol=lf
+Makefile    text eol=lf
+Dockerfile  text eol=lf
+.env*       text eol=lf
+
+# Binary assets
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.webp      binary
+*.svg       text eol=lf
+
+# Lockfiles should be diffable but never merged
+package-lock.json linguist-generated=true
+go.sum            linguist-generated=true
+
+# GitHub linguist hints
+docs/**         linguist-documentation
+rules/**.yaml   linguist-detectable=true
