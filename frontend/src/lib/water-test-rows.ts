@@ -21,16 +21,25 @@ export function measurementRowsForWaterTest(test: WaterTest): {
   const rows: { label: string; value: string }[] = [];
 
   if (presentNumber(test.nitrite_mg_l)) {
-    rows.push({ label: "Nitrit", value: `${fmtNum(test.nitrite_mg_l)} mg/l` });
+    rows.push({ label: "Nitrit NO₂", value: `${fmtNum(test.nitrite_mg_l)} mg/l` });
   }
   if (presentNumber(test.nitrate_mg_l)) {
-    rows.push({ label: "Nitrat", value: `${fmtNum(test.nitrate_mg_l)} mg/l` });
+    rows.push({ label: "Nitrat NO₃", value: `${fmtNum(test.nitrate_mg_l)} mg/l` });
   }
   if (presentNumber(test.ph)) {
-    rows.push({ label: "pH", value: fmtNum(test.ph) });
+    rows.push({ label: "pH-Wert", value: fmtNum(test.ph) });
+  }
+  if (presentNumber(test.temp_c)) {
+    rows.push({ label: "Temperatur", value: `${fmtNum(test.temp_c)} °C` });
   }
   if (presentNumber(test.kh_dkh)) {
     rows.push({ label: "KH", value: `${fmtNum(test.kh_dkh)} °dKH` });
+  }
+  if (presentNumber(test.gh_dgh)) {
+    rows.push({ label: "GH", value: `${fmtNum(test.gh_dgh)} °dGH` });
+  }
+  if (presentNumber(test.ammonium_mg_l)) {
+    rows.push({ label: "Ammonium NH₄", value: `${fmtNum(test.ammonium_mg_l)} mg/l` });
   }
   if (presentNumber(test.co2_mg_l)) {
     rows.push({ label: "CO₂", value: `${fmtNum(test.co2_mg_l)} mg/l` });

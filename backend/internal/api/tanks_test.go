@@ -315,6 +315,24 @@ func TestWaterTests_List_Delete_Order(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	diagRow := models.DiagnosisResultRow{
+		WaterTestID:         wt2,
+		DiagnosisType:       "unknown",
+		Confidence:          0,
+		Severity:            "low",
+		ActionsNowJSON:      "[]",
+		ActionsOptionalJSON: "[]",
+		AvoidJSON:           "[]",
+		FactsJSON:           "[]",
+		MatchedRuleIDsJSON:  "[]",
+		RunnerUpJSON:        "[]",
+		ExplanationJSON:     `{"summary":"","reasoning_public":"","actions_now":[],"actions_optional":[],"avoid":[],"follow_up_questions":[],"safety_note":"","source":"deterministic"}`,
+	}
+	diagID, err := db.InsertDiagnosisResult(ctx, sqlDB, diagRow)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Run("GET list newest first", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/v1/tanks/"+strconv.FormatInt(tankID, 10)+"/water-tests", nil)
 		rec := httptest.NewRecorder()
@@ -333,6 +351,12 @@ func TestWaterTests_List_Delete_Order(t *testing.T) {
 		}
 		if out.Tests[0].ID != wt2 || out.Tests[1].ID != wt1 {
 			t.Fatalf("order want [%d,%d] got [%d,%d]", wt2, wt1, out.Tests[0].ID, out.Tests[1].ID)
+		}
+		if out.Tests[0].DiagnosisResultID == nil || *out.Tests[0].DiagnosisResultID != diagID {
+			t.Fatalf("wt2 diagnosis_result_id want %d got %+v", diagID, out.Tests[0].DiagnosisResultID)
+		}
+		if out.Tests[1].DiagnosisResultID != nil {
+			t.Fatalf("wt1 should have no diagnosis_result_id, got %+v", out.Tests[1].DiagnosisResultID)
 		}
 	})
 

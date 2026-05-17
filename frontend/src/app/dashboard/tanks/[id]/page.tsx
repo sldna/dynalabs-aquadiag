@@ -3,7 +3,7 @@ import Link from "next/link";
 import { DashboardNav } from "@/components/DashboardNav";
 import { PageContainer } from "@/components/layout";
 import { DeleteTankDialog } from "@/components/tanks/DeleteTankDialog";
-import { WaterMeasurementsSection } from "@/components/tanks/WaterMeasurementsSection";
+import { WaterValueHistorySection } from "@/components/tanks/WaterValueHistorySection";
 import { serverFetchBase } from "@/lib/api-base";
 import { formatDateDE } from "@/lib/date";
 import type { Tank, WaterTest, WaterTestsListResponse } from "@/lib/types";
@@ -174,7 +174,7 @@ function TankDetail({
             </dl>
           </section>
 
-          <WaterMeasurementsSection tankId={tank.id} waterTests={waterTests} />
+          <WaterValueHistorySection tankId={tank.id} waterTests={waterTests} />
         </div>
 
         <aside className="mt-8 space-y-3 lg:mt-0" aria-label="Aktionen">

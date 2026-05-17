@@ -46,7 +46,8 @@ INSERT INTO water_tests (
 
 const waterTestSelectCols = `
 id, tank_id, ph, kh_dkh, gh_dgh, temp_c, nitrite_mg_l, nitrate_mg_l, ammonium_mg_l,
-oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes, created_at`
+oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes, created_at,
+(SELECT dr.id FROM diagnosis_results dr WHERE dr.water_test_id = water_tests.id ORDER BY dr.id DESC LIMIT 1) AS diagnosis_result_id`
 
 // ListWaterTestsByTank returns water tests for a tank, newest id first.
 func ListWaterTestsByTank(ctx context.Context, q DBTX, tankID int64) ([]models.WaterTestRecord, error) {
@@ -107,6 +108,7 @@ func scanWaterTestRow(scan func(dest ...any) error) (models.WaterTestRecord, err
 	var rec models.WaterTestRecord
 	var ph, kh, gh, temp, no2, no3, nh4, o2, o2sat, co2 sql.NullFloat64
 	var notes sql.NullString
+	var diagnosisID sql.NullInt64
 	var symJSON string
 	err := scan(
 		&rec.ID,
@@ -124,6 +126,7 @@ func scanWaterTestRow(scan func(dest ...any) error) (models.WaterTestRecord, err
 		&symJSON,
 		&notes,
 		&rec.CreatedAt,
+		&diagnosisID,
 	)
 	if err != nil {
 		return models.WaterTestRecord{}, err
@@ -146,6 +149,10 @@ func scanWaterTestRow(scan func(dest ...any) error) (models.WaterTestRecord, err
 	if notes.Valid {
 		s := notes.String
 		rec.Notes = &s
+	}
+	if diagnosisID.Valid {
+		id := diagnosisID.Int64
+		rec.DiagnosisResultID = &id
 	}
 	rec.CreatedAt = normalizeSQLiteTimestamp(rec.CreatedAt)
 	return rec, nil

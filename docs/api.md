@@ -105,6 +105,7 @@ Antwort:
       "ph": 7.2,
       "symptoms": [],
       "created_at": "2026-05-08T12:00:00Z",
+      "diagnosis_result_id": 42,
       "water_quality_status": "red",
       "water_quality_items": [
         {
@@ -131,6 +132,11 @@ Antwort:
 
 Sortierung: neueste zuerst (`id DESC`).
 
+Felder pro Messung (Auszug): `ph`, `kh_dkh`, `gh_dgh`, `temp_c`, `nitrite_mg_l`,
+`nitrate_mg_l`, `ammonium_mg_l`, `oxygen_mg_l`, `oxygen_saturation_pct`,
+`co2_mg_l`, `symptoms`, `created_at`, optional `diagnosis_result_id` (wenn eine
+Diagnose zu dieser Messung existiert).
+
 ### `GET /v1/water-tests/{id}`
 
 Eine Messung inkl. `symptoms` (decoded aus `symptoms_json`) sowie der
@@ -139,7 +145,16 @@ deterministischen Ampel-Felder `water_quality_status` und
 
 ### `DELETE /v1/water-tests/{id}`
 
-`204` bei Erfolg. Entfernt abhängige `diagnosis_results` mit.
+`204` bei Erfolg. Entfernt zugehörige `diagnosis_results` in einer Transaktion,
+danach den `water_tests`-Datensatz (zusätzlich abgesichert durch
+`ON DELETE CASCADE` in der Datenbank).
+
+### UI: Verlaufsgrafiken (Becken-Detail)
+
+Auf `/dashboard/tanks/{id}` zeigt das Frontend die Historie als Karten (neueste
+zuerst) und darüber einfache SVG-Line-Charts (kein recharts). Zeitraumfilter:
+7 Tage, 30 Tage, alle. Charts dienen nur der Orientierung und lösen keine
+Diagnose aus.
 
 ### Ampelsystem (M3.5)
 

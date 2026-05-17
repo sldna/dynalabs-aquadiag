@@ -28,9 +28,9 @@ describe("measurementRowsForWaterTest", () => {
     );
 
     expect(rows.map((r) => r.label)).toEqual([
-      "Nitrit",
-      "Nitrat",
-      "pH",
+      "Nitrit NO₂",
+      "Nitrat NO₃",
+      "pH-Wert",
       "KH",
       "CO₂",
       "O₂-Sättigung",

@@ -80,7 +80,7 @@ export function DeleteWaterTestDialog({
         }}
         className="rounded-button border border-status-critical/45 bg-white px-3 py-2 text-sm font-semibold text-status-critical hover:bg-status-critical/10"
       >
-        Löschen
+        Messung löschen
       </button>
 
       {open ? (
@@ -107,8 +107,8 @@ export function DeleteWaterTestDialog({
             </h2>
 
             <p id={descId} className="mt-3 text-sm text-aqua-deep/85">
-              Diese Aktion kann nicht rückgängig gemacht werden. Eine vorhandene
-              Diagnose zu dieser Messung wird mitgelöscht.
+              Diese Messung und die zugehörige Diagnose werden gelöscht. Diese Aktion
+              kann nicht rückgängig gemacht werden.
             </p>
 
             {error ? (
