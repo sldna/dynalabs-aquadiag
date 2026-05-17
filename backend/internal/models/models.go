@@ -32,6 +32,8 @@ type WaterTestRecord struct {
 	Symptoms            []string `json:"symptoms"`
 	Notes               *string  `json:"notes,omitempty"`
 	CreatedAt           string   `json:"created_at"`
+	// DiagnosisResultID is set when a diagnosis_results row exists for this test.
+	DiagnosisResultID *int64 `json:"diagnosis_result_id,omitempty"`
 }
 
 // FollowUpAnswerItem is optional user context for POST /v1/diagnose (follow-up Q&A).

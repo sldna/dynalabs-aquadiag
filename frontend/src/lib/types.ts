@@ -52,6 +52,8 @@ export type WaterTest = {
   symptoms: string[];
   notes?: string | null;
   created_at: string;
+  /** Linked diagnosis row when this measurement was analyzed. */
+  diagnosis_result_id?: number | null;
   /** Overall traffic-light status across all measured values (since M3.5). */
   water_quality_status?: WaterQualityStatus;
   /** Per-value traffic-light items (since M3.5); empty array when nothing measured. */

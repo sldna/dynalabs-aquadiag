@@ -54,8 +54,12 @@ Diagnose mit klaren nächsten Schritten erhalten.
   freundlichem Deutsch, ohne jemals die Diagnose zu überstimmen
 - **Tank-Management**: mehrere Aquarien, Notizen, sauberer Lösch-Workflow ohne
   verwaiste Datensätze
-- **Wassertest-Historie** pro Becken (neueste zuerst), inklusive Symptome und
-  Diagnoseverknüpfung
+- **Wasserwert-Historie** pro Becken (neueste zuerst), inklusive Symptome und
+  Diagnoseverknüpfung (`diagnosis_result_id`)
+- **Verlaufsgrafiken** auf der Becken-Detailseite (`/dashboard/tanks/{id}`):
+  einfache SVG-Line-Charts für pH, Nitrit, Nitrat, Temperatur (optional KH, GH,
+  NH₄, CO₂) mit Zeitraumfilter 7/30 Tage/alle – reine Visualisierung, keine
+  Diagnose aus Trends
 - **Ampelsystem für Wasserwerte** (M3.5): jede Messung erhält zusätzlich eine
   einfache Grün/Gelb/Rot-Einschätzung pro Wert und für die Messung gesamt –
   als Orientierung, ohne die deterministische Diagnose zu verändern
@@ -259,7 +263,7 @@ Die vollständige API-Referenz mit Beispiel-Bodies und Antwort-Schemata steht in
 | DELETE   | `/v1/tanks/{id}`                       | Becken + abhängige Daten löschen                     |
 | GET      | `/v1/tanks/{id}/water-tests`           | Wassertests eines Beckens (neueste zuerst)           |
 | GET      | `/v1/water-tests/{id}`                 | einzelner Wassertest inkl. Symptome                  |
-| DELETE   | `/v1/water-tests/{id}`                 | Wassertest + abhängige Diagnosen löschen             |
+| DELETE   | `/v1/water-tests/{id}`                 | Wassertest + abhängige Diagnosen löschen (Cascade)   |
 | POST     | `/v1/diagnose`                         | Diagnose erzeugen (Symptome + optionale Wasserwerte) |
 | PATCH    | `/v1/diagnoses/{id}`                   | Antworten auf Rückfragen speichern                   |
 

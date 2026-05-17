@@ -26,9 +26,9 @@ describe("DeleteWaterTestDialog", () => {
 
   it("mentions cascade deletion of diagnosis in the dialog text", () => {
     render(<DeleteWaterTestDialog waterTestId={9} />);
-    fireEvent.click(screen.getByRole("button", { name: /^Löschen$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Messung löschen/i }));
 
-    expect(screen.getByRole("dialog")).toHaveTextContent(/Diagnose zu dieser Messung/i);
+    expect(screen.getByRole("dialog")).toHaveTextContent(/zugehörige Diagnose werden gelöscht/i);
   });
 
   it("calls DELETE and refreshes on confirm", async () => {
@@ -40,7 +40,7 @@ describe("DeleteWaterTestDialog", () => {
     global.fetch = fetchMock as unknown as typeof fetch;
 
     render(<DeleteWaterTestDialog waterTestId={11} />);
-    fireEvent.click(screen.getByRole("button", { name: /^Löschen$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Messung löschen/i }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Endgültig löschen/i }));
     });
