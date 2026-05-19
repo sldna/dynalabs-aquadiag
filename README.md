@@ -35,6 +35,7 @@ Diagnose mit klaren nächsten Schritten erhalten.
 - [Tech Stack](#tech-stack)
 - [Screenshots](#screenshots)
 - [Quick Start](#quick-start)
+- [Synology Deployment](#synology-deployment)
 - [Local Development](#local-development)
 - [AI Configuration](#ai-configuration)
 - [Project Structure](#project-structure)
@@ -132,6 +133,86 @@ make help      # alle Targets anzeigen
 > `podman-compose` ersetzen. Bei „container state improper“ hilft
 > `podman-compose down && podman-compose up --build --force-recreate`.
 
+## Synology Deployment
+
+Für Synology NAS (oder andere Hosts ohne lokales Image-Build) gibt es eine
+separate Compose-Datei, die **fertige Images** aus der GitHub Container Registry
+(GHCR) lädt. Die lokale Entwicklungs-`docker-compose.yml` bleibt unverändert.
+
+### Vorbereitung
+
+```bash
+cp .env.synology.example .env.synology
+```
+
+In `.env.synology` die Platzhalter `DEINE-SYNOLOGY-IP` durch die IP oder den
+Hostnamen deiner Synology ersetzen (z. B. `192.168.1.50` oder
+`aquadiag.example.home`):
+
+- `NEXT_PUBLIC_API_BASE_URL` → `http://<SYNOLOGY>:8080`
+- `CORS_ALLOWED_ORIGINS` → `http://<SYNOLOGY>:3000`
+
+Keine Secrets committen – `.env.synology` gehört nur auf den NAS.
+
+### Start
+
+```bash
+docker compose --env-file .env.synology -f docker-compose.synology.yml up -d
+```
+
+### Update (neue Images von GHCR)
+
+```bash
+docker compose --env-file .env.synology -f docker-compose.synology.yml pull
+docker compose --env-file .env.synology -f docker-compose.synology.yml up -d
+```
+
+### Zugriff
+
+| Dienst           | URL                                      |
+|------------------|------------------------------------------|
+| Frontend         | `http://<SYNOLOGY-IP>:3000`              |
+| Backend Health   | `http://<SYNOLOGY-IP>:8080/health`       |
+
+### Images
+
+| Service  | Image                                              |
+|----------|----------------------------------------------------|
+| Backend  | `ghcr.io/sldna/dynalabs-aquadiag-backend:latest`   |
+| Frontend | `ghcr.io/sldna/dynalabs-aquadiag-frontend:latest`|
+
+Zusätzliche Tags mit Git-SHA werden bei Push auf `main` über
+[`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)
+veröffentlicht (z. B. `main-abc1234`).
+
+### Persistenz
+
+SQLite liegt im Docker-Volume `aquadiag-data` (Pfad im Container:
+`/data/aquadiag.db`). Beim Entfernen des Volumes gehen die Daten verloren.
+
+### Hinweis: `NEXT_PUBLIC_API_BASE_URL` und GHCR-Images
+
+Next.js bindet `NEXT_PUBLIC_*`-Variablen **zur Build-Zeit** in den
+Client-Bundle ein. Die GHCR-Frontend-Images werden in CI mit
+`NEXT_PUBLIC_API_BASE_URL=http://localhost:8080` gebaut – eine spätere
+Änderung in `.env.synology` wirkt daher **nicht** auf bereits eingebettete
+Client-Werte.
+
+Für den normalen App-Betrieb auf der Synology ist das in der Praxis meist
+unkritisch: Browser-Requests laufen über den eingebauten Next.js-Proxy unter
+`/api/backend` (siehe `frontend/src/app/api/backend/[...path]/route.ts`), der
+serverseitig `API_INTERNAL_BASE_URL=http://backend:8080` nutzt. CORS muss nur
+zwischen Browser-Origin (Frontend-Port) und direkten Backend-Aufrufen passen –
+die Proxy-Route vermeidet Cross-Origin-Fetches vom UI.
+
+**Einschränkung:** Anzeigen, die `NEXT_PUBLIC_API_BASE_URL` direkt ausgeben
+(z. B. Backend-Status-Hinweis), können weiterhin `localhost:8080` zeigen, obwohl
+die API erreichbar ist.
+
+**Folgeaufgabe (optional):** Relative API-Pfade konsequent nutzen oder eine
+Runtime-Konfiguration (z. B. `/api/config`-Endpoint) einführen, damit
+Synology-Hosts ohne Image-Rebuild konfigurierbar sind.
+
 ## Local Development
 
 ### Backend (Go ≥ 1.25)
@@ -217,9 +298,11 @@ Variablen (siehe `.env.example`): `AI_ENABLED`, `AI_API_KEY`, `AI_BASE_URL`
 ├── rules/                  YAML-Regelbasis (`aquarium-rules.yaml`)
 ├── docs/                   Architektur, API, Screenshots
 ├── .github/                CI, Issue-/PR-Templates, Labels
-├── docker-compose.yml      Standard-Orchestrierung
-├── Makefile                Dev-Convenience-Targets
-└── .env.example            Beispielkonfiguration
+├── docker-compose.yml           Standard-Orchestrierung (lokal, mit Build)
+├── docker-compose.synology.yml  Synology/GHCR (nur Pull, kein Build)
+├── Makefile                     Dev-Convenience-Targets
+├── .env.example                 Beispielkonfiguration (Entwicklung)
+└── .env.synology.example        Beispielkonfiguration (Synology/GHCR)
 ```
 
 Tiefer einsteigen:
