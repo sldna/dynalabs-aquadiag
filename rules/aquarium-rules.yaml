@@ -24,10 +24,10 @@ rules:
     when:
       any:
         - field: nitrite_mg_l
-          gte: 0.25
+          gte: 0.5
         - all:
             - field: nitrite_mg_l
-              gte: 0.05
+              gte: 0.2
             - field: symptoms
               contains_any: [gasping, fish_gasping_surface, labored_breathing]
     exclude_if:
@@ -79,7 +79,7 @@ rules:
       Dies ist eine technische Einordnung — keine veterinärmedizinische Diagnose.
     when:
       field: ammonium_mg_l
-      gte: 0.05
+      gte: 0.2
     symptom_weights:
       gasping: 0.09
       fish_gasping_surface: 0.09
@@ -223,7 +223,7 @@ rules:
         - field: ph
           lte: 6.0
         - field: ph
-          gte: 8.5
+          gte: 9.0
         - field: symptoms
           contains_any: [ph_crash_after_water_change]
     symptom_weights:
@@ -260,9 +260,9 @@ rules:
     when:
       any:
         - field: temp_c
-          lte: 22
+          lte: 18.9
         - field: temp_c
-          gte: 30
+          gte: 30.1
         - field: symptoms
           contains_any: [temperature_swings]
     symptom_weights:
@@ -559,9 +559,9 @@ rules:
       any:
         - all:
             - field: nitrite_mg_l
-              gte: 0.08
+              gte: 0.2
             - field: nitrite_mg_l
-              lt: 0.25
+              lt: 0.5
         - field: symptoms
           contains_any: [new_aquarium_setup, frequent_small_die_offs]
     symptom_weights:
@@ -602,7 +602,7 @@ rules:
             - field: nitrate_mg_l
               gte: 50
             - field: nitrite_mg_l
-              gte: 0.05
+              gte: 0.2
     symptom_weights:
       overstocked_suspected: 0.14
     actions_now:

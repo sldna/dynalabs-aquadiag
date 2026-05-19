@@ -11,17 +11,33 @@ describe("WaterQualityBadge", () => {
     expect(el).toHaveTextContent(/Unauffällig/);
   });
 
-  it("renders the German label for yellow", () => {
+  it("renders observe without critical styling", () => {
+    render(<WaterQualityBadge status="observe" />);
+    const el = screen.getByTestId("water-quality-badge");
+    expect(el).toHaveAttribute("data-status", "observe");
+    expect(el).toHaveTextContent(/Beobachten/);
+  });
+
+  it("maps legacy yellow to observe", () => {
     render(<WaterQualityBadge status="yellow" />);
-    expect(screen.getByTestId("water-quality-badge")).toHaveTextContent(
-      /Beobachten/,
+    expect(screen.getByTestId("water-quality-badge")).toHaveAttribute(
+      "data-status",
+      "observe",
     );
   });
 
-  it("renders the German label for red", () => {
-    render(<WaterQualityBadge status="red" />);
+  it("renders critical label", () => {
+    render(<WaterQualityBadge status="critical" />);
     expect(screen.getByTestId("water-quality-badge")).toHaveTextContent(
       /Kritisch/,
+    );
+  });
+
+  it("maps legacy red to critical", () => {
+    render(<WaterQualityBadge status="red" />);
+    expect(screen.getByTestId("water-quality-badge")).toHaveAttribute(
+      "data-status",
+      "critical",
     );
   });
 

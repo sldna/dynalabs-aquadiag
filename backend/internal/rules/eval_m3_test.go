@@ -47,25 +47,27 @@ func TestM3_FrayedFins_RanksFinRotFirst(t *testing.T) {
 	}
 }
 
-func TestM3_NitriteExcludeIf_ExcludesLowNitriteWithGasping(t *testing.T) {
+func TestM3_LowNitriteWithGasping_NoNitritePoisoning(t *testing.T) {
 	rs := mustRules(t)
 	n := 0.07
 	in := EvalInput{NitriteMgL: &n, Symptoms: []string{"gasping"}}
 	ev := rs.EvaluateWithMeta(in)
 	for _, m := range ev.Matches {
 		if m.RuleID == "nitrite_poisoning_v1" {
-			t.Fatalf("nitrite_poisoning should be suppressed, got match %+v", m)
+			t.Fatalf("nitrite_poisoning should not match JBL-green nitrite with gasping alone, got %+v", m)
 		}
 	}
-	var hit bool
-	for _, e := range ev.Excluded {
-		if e.RuleID == "nitrite_poisoning_v1" && e.Reason == "exclude_if" {
-			hit = true
-			break
+}
+
+func TestM3_NitriteExcludeIf_SuppressesBorderlineWithGasping(t *testing.T) {
+	rs := mustRules(t)
+	n := 0.08
+	in := EvalInput{NitriteMgL: &n, Symptoms: []string{"gasping"}}
+	ev := rs.EvaluateWithMeta(in)
+	for _, m := range ev.Matches {
+		if m.RuleID == "nitrite_poisoning_v1" {
+			t.Fatalf("nitrite_poisoning should not match below JBL observe band, got %+v", m)
 		}
-	}
-	if !hit {
-		t.Fatalf("expected excluded nitrite_poisoning_v1 with exclude_if, excluded=%v matches=%v", ev.Excluded, ev.Matches)
 	}
 }
 

@@ -39,8 +39,14 @@ export function WaterQualityItemCard({ item }: WaterQualityItemCardProps) {
         <WaterQualityBadge status={status} />
       </header>
 
+      {item.status_label ? (
+        <p className="mt-2 text-xs font-medium text-aqua-deep/70">
+          {item.status_label}
+        </p>
+      ) : null}
+
       {item.message ? (
-        <p className="mt-2 text-sm text-aqua-deep/85">{item.message}</p>
+        <p className="mt-1 text-sm text-aqua-deep/85">{item.message}</p>
       ) : null}
 
       {item.recommendation_short ? (

@@ -12,7 +12,7 @@ describe("WaterQualityItemCard", () => {
           label: "Nitrit (NO₂)",
           value: 0.4,
           unit: "mg/l",
-          status: "red",
+          status: "critical",
           message: "Nitrit deutlich erhöht – akut kritisch für Fische.",
           recommendation_short: "Sofort 30–50 % Wasserwechsel, nicht füttern.",
         }}
@@ -21,7 +21,7 @@ describe("WaterQualityItemCard", () => {
 
     const card = screen.getByTestId("water-quality-item-card");
     expect(card).toHaveAttribute("data-key", "no2");
-    expect(card).toHaveAttribute("data-status", "red");
+    expect(card).toHaveAttribute("data-status", "critical");
     expect(screen.getByText(/Nitrit \(NO₂\)/)).toBeInTheDocument();
     expect(screen.getByText(/0,4 mg\/l/)).toBeInTheDocument();
     expect(screen.getByText(/akut kritisch/)).toBeInTheDocument();

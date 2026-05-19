@@ -80,8 +80,8 @@ func TestWaterTestDetail_IncludesWaterQualityFields(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatal(err)
 	}
-	if out.WaterQualityStatus != "red" {
-		t.Fatalf("status=%q want red (no2=0.4)", out.WaterQualityStatus)
+	if out.WaterQualityStatus != "warning" {
+		t.Fatalf("status=%q want warning (no2=0.4)", out.WaterQualityStatus)
 	}
 	if len(out.WaterQualityItems) != 1 {
 		t.Fatalf("items=%d want 1; body=%s", len(out.WaterQualityItems), rec.Body.String())
@@ -89,8 +89,8 @@ func TestWaterTestDetail_IncludesWaterQualityFields(t *testing.T) {
 	if out.WaterQualityItems[0]["key"] != "no2" {
 		t.Fatalf("item key=%v want no2", out.WaterQualityItems[0]["key"])
 	}
-	if out.WaterQualityItems[0]["status"] != "red" {
-		t.Fatalf("item status=%v want red", out.WaterQualityItems[0]["status"])
+	if out.WaterQualityItems[0]["status"] != "warning" {
+		t.Fatalf("item status=%v want warning", out.WaterQualityItems[0]["status"])
 	}
 }
 

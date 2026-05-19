@@ -33,14 +33,14 @@ describe("WaterTestMeasurementCard", () => {
       nitrite_mg_l: 0.4,
       symptoms: [],
       created_at: "2026-03-01T08:00:00Z",
-      water_quality_status: "red",
+      water_quality_status: "critical",
       water_quality_items: [],
     };
 
     render(<WaterTestMeasurementCard tankId={7} test={test} />);
 
     const badge = screen.getByTestId("water-quality-badge");
-    expect(badge).toHaveAttribute("data-status", "red");
+    expect(badge).toHaveAttribute("data-status", "critical");
     expect(badge).toHaveTextContent(/Kritisch/);
   });
 

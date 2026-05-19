@@ -29,9 +29,9 @@ func TestLoadFile_V1AquariumRules(t *testing.T) {
 	}
 }
 
-func TestEvaluate_NitriteGte025_MatchesNitriteRiskV1(t *testing.T) {
+func TestEvaluate_NitriteGte05_MatchesNitritePoisoningV1(t *testing.T) {
 	rs := mustRules(t)
-	n := 0.25
+	n := 0.6
 	in := EvalInput{NitriteMgL: &n}
 	matches := rs.Evaluate(in)
 	if len(matches) == 0 || matches[0].RuleID != "nitrite_poisoning_v1" {
