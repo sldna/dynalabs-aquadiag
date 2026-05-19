@@ -11,7 +11,7 @@ const items: WaterQualityItem[] = [
     label: "Nitrit (NO₂)",
     value: 0.4,
     unit: "mg/l",
-    status: "red",
+    status: "critical",
     message: "Nitrit deutlich erhöht – akut kritisch für Fische.",
     recommendation_short: "Sofort 30–50 % Wasserwechsel, nicht füttern.",
   },
@@ -26,10 +26,10 @@ const items: WaterQualityItem[] = [
 
 describe("WaterQualitySummary", () => {
   it("shows status headline and item cards when items are present", () => {
-    render(<WaterQualitySummary status="red" items={items} />);
+    render(<WaterQualitySummary status="critical" items={items} />);
 
     const root = screen.getByTestId("water-quality-summary");
-    expect(root).toHaveAttribute("data-status", "red");
+    expect(root).toHaveAttribute("data-status", "critical");
     expect(screen.getByText(/Wasserwerte kritisch/)).toBeInTheDocument();
     expect(screen.getByText(/Nitrit \(NO₂\)/)).toBeInTheDocument();
     expect(screen.getByText(/pH-Wert/)).toBeInTheDocument();

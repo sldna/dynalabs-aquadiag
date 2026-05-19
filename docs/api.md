@@ -161,7 +161,8 @@ Diagnose aus.
 Jede Water-Test-Antwort enthält zusätzlich eine **Orientierungs-Ampel**:
 
 - `water_quality_status` (`string`): Gesamtstatus über alle gemessenen Werte.
-  Mögliche Werte: `green`, `yellow`, `red`, `unknown`.
+  Mögliche Werte: `green`, `observe`, `warning`, `critical`, `unknown`
+  (ältere Clients: `yellow` → `observe`, `red` → `critical`).
 - `water_quality_items[]`: pro bewertetem Wert ein Eintrag mit
   `key`, `label`, `value`, `unit`, `status`, `message`, optional
   `recommendation_short`.

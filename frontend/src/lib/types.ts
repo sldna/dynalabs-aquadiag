@@ -20,7 +20,12 @@ export type TanksListResponse = {
  * Traffic-light status for an individual water value or the whole water test.
  * Mirrors backend/internal/waterquality.Status.
  */
-export type WaterQualityStatus = "green" | "yellow" | "red" | "unknown";
+export type WaterQualityStatus =
+  | "green"
+  | "observe"
+  | "warning"
+  | "critical"
+  | "unknown";
 
 /**
  * One classified water value as returned by the backend assessment.
@@ -32,6 +37,7 @@ export type WaterQualityItem = {
   value: number;
   unit?: string;
   status: WaterQualityStatus;
+  status_label?: string;
   message: string;
   recommendation_short?: string;
 };

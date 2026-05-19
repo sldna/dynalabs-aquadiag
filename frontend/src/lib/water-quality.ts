@@ -1,24 +1,17 @@
 /**
- * Helpers for the M3.5 water-quality traffic-light layer.
+ * Helpers for the M3.5 water-quality traffic-light layer (JBL-aligned).
  *
- * The mapping is intentionally narrow: each status maps to one tone of the
- * existing AquaDiag status palette (see tailwind.config.ts safelist). Unknown
- * values fall back to a neutral sand badge so missing measurements never look
- * like an error.
+ * Status palette: green → observe → warning → critical (plus unknown).
+ * Legacy API values yellow/red are normalized to observe/critical.
  *
- * Important: this is an orientation layer for the UI only. The deterministic
- * rule engine remains the single source of truth for diagnoses.
+ * Important: orientation layer for the UI only. The rule engine decides diagnoses.
  */
 import type { WaterQualityStatus } from "@/lib/types";
 
 export type WaterQualityClassNames = {
-  /** Background, text and ring classes for the badge pill. */
   badge: string;
-  /** Solid dot color, used inline next to a value. */
   dot: string;
-  /** Subtle tinted background for card-style items. */
   cardBg: string;
-  /** Left accent border for card-style items. */
   cardAccent: string;
 };
 
@@ -30,14 +23,21 @@ const CLASSES: Record<WaterQualityStatus, WaterQualityClassNames> = {
     cardBg: "bg-status-success/[0.08]",
     cardAccent: "border-l-[6px] border-l-status-success",
   },
-  yellow: {
+  observe: {
+    badge:
+      "bg-status-info/20 text-aqua-deep ring-2 ring-status-info/40 shadow-sm",
+    dot: "bg-status-info",
+    cardBg: "bg-status-info/[0.08]",
+    cardAccent: "border-l-[6px] border-l-status-info",
+  },
+  warning: {
     badge:
       "bg-status-warning/35 text-aqua-deep ring-2 ring-status-warning/55 shadow-sm",
     dot: "bg-status-warning",
     cardBg: "bg-status-warning/[0.12]",
     cardAccent: "border-l-[6px] border-l-status-warning",
   },
-  red: {
+  critical: {
     badge:
       "bg-status-critical/22 text-status-critical ring-2 ring-status-critical/50 shadow-sm",
     dot: "bg-status-critical",
@@ -54,17 +54,35 @@ const CLASSES: Record<WaterQualityStatus, WaterQualityClassNames> = {
 
 const VALID: ReadonlySet<WaterQualityStatus> = new Set<WaterQualityStatus>([
   "green",
-  "yellow",
-  "red",
+  "observe",
+  "warning",
+  "critical",
   "unknown",
 ]);
 
-/** Type guard with graceful fallback so the UI never crashes on a new value. */
+/** Maps deprecated yellow/red from older API responses. */
+function legacyStatusMap(status: string): WaterQualityStatus | null {
+  switch (status) {
+    case "yellow":
+      return "observe";
+    case "red":
+      return "critical";
+    default:
+      return null;
+  }
+}
+
 export function normalizeWaterQualityStatus(
   status: string | null | undefined,
 ): WaterQualityStatus {
-  if (typeof status === "string" && VALID.has(status as WaterQualityStatus)) {
-    return status as WaterQualityStatus;
+  if (typeof status === "string") {
+    const legacy = legacyStatusMap(status);
+    if (legacy) {
+      return legacy;
+    }
+    if (VALID.has(status as WaterQualityStatus)) {
+      return status as WaterQualityStatus;
+    }
   }
   return "unknown";
 }
@@ -82,9 +100,11 @@ export function waterQualityLabelDE(
   switch (normalizeWaterQualityStatus(status)) {
     case "green":
       return "Unauffällig";
-    case "yellow":
+    case "observe":
       return "Beobachten";
-    case "red":
+    case "warning":
+      return "Warnung";
+    case "critical":
       return "Kritisch";
     case "unknown":
     default:
@@ -92,16 +112,17 @@ export function waterQualityLabelDE(
   }
 }
 
-/** Slightly longer headline for the per-test summary banner. */
 export function waterQualitySummaryHeadlineDE(
   status: string | null | undefined,
 ): string {
   switch (normalizeWaterQualityStatus(status)) {
     case "green":
       return "Wasserwerte unauffällig";
-    case "yellow":
+    case "observe":
       return "Wasserwerte beobachten";
-    case "red":
+    case "warning":
+      return "Wasserwerte: Warnung";
+    case "critical":
       return "Wasserwerte kritisch";
     case "unknown":
     default:
@@ -109,7 +130,6 @@ export function waterQualitySummaryHeadlineDE(
   }
 }
 
-/** Locale-aware number formatting for the value display. */
 export function formatWaterQualityValue(
   value: number,
   unit?: string,

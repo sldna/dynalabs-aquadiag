@@ -30,12 +30,12 @@ func TestEvaluateWaterTest_UnknownWhenAllNil(t *testing.T) {
 func TestEvaluateWaterTest_GreenAllNormal(t *testing.T) {
 	rec := models.WaterTestRecord{
 		PH:          ptrF(7.2),
-		KhDKH:       ptrF(6),
-		GhDGH:       ptrF(10),
+		KhDKH:       ptrF(10),
+		GhDGH:       ptrF(15),
 		TempC:       ptrF(25),
-		NitriteMgL:  ptrF(0),
+		NitriteMgL:  ptrF(0.05),
 		NitrateMgL:  ptrF(20),
-		AmmoniumMgL: ptrF(0),
+		AmmoniumMgL: ptrF(0.05),
 		OxygenMgL:   ptrF(7),
 		CO2MgL:      ptrF(25),
 	}
@@ -50,79 +50,83 @@ func TestEvaluateWaterTest_GreenAllNormal(t *testing.T) {
 	}
 }
 
-func TestEvaluateWaterTest_NitriteCriticalDrivesRed(t *testing.T) {
+func TestEvaluateWaterTest_NitriteCriticalDrivesCritical(t *testing.T) {
 	rec := models.WaterTestRecord{
 		PH:         ptrF(7.0),
-		NitriteMgL: ptrF(0.4),
+		NitriteMgL: ptrF(0.6),
 	}
 	a := EvaluateWaterTest(rec)
-	if a.Status != StatusRed {
-		t.Fatalf("overall=%q want red", a.Status)
+	if a.Status != StatusCritical {
+		t.Fatalf("overall=%q want critical", a.Status)
 	}
 	it, ok := findItem(a.Items, "no2")
 	if !ok {
 		t.Fatalf("no2 item missing")
 	}
-	if it.Status != StatusRed {
-		t.Fatalf("no2.status=%q want red", it.Status)
+	if it.Status != StatusCritical {
+		t.Fatalf("no2.status=%q want critical", it.Status)
 	}
 	if it.RecommendationShort == "" {
-		t.Fatalf("no2 should carry a short recommendation when red")
+		t.Fatalf("no2 should carry a short recommendation when critical")
 	}
 }
 
-func TestEvaluateWaterTest_NitriteAtOrBelowDetectionLimitStaysGreen(t *testing.T) {
-	// 0.01 mg/l ist der typische Nachweis-Grenzwert hobbyüblicher Tropfentests
-	// (z. B. JBL, Sera, Tetra). Werte an oder unterhalb dieser Grenze meldet
-	// der Test als "<0,01 mg/l" und sollen weiterhin als unauffällig gelten.
-	for _, v := range []float64{0, 0.005, 0.009, 0.01} {
-		rec := models.WaterTestRecord{NitriteMgL: ptrF(v)}
-		a := EvaluateWaterTest(rec)
-		if a.Status != StatusGreen {
-			t.Fatalf("v=%v overall=%q want green", v, a.Status)
-		}
-		it, _ := findItem(a.Items, "no2")
-		if it.Status != StatusGreen {
-			t.Fatalf("v=%v no2.status=%q want green", v, it.Status)
-		}
+func TestEvaluateWaterTest_NitriteAtJBLGreenLimit(t *testing.T) {
+	rec := models.WaterTestRecord{NitriteMgL: ptrF(0.1)}
+	a := EvaluateWaterTest(rec)
+	if a.Status != StatusGreen {
+		t.Fatalf("overall=%q want green", a.Status)
+	}
+	it, _ := findItem(a.Items, "no2")
+	if it.Status != StatusGreen {
+		t.Fatalf("no2.status=%q want green", it.Status)
 	}
 }
 
-func TestEvaluateWaterTest_NitriteAboveDetectionLimitIsYellow(t *testing.T) {
-	// Der nächste sichtbare Messschritt typischer Tropfentests ist 0,025 mg/l
-	// (JBL/Sera Skala). Dieser Wert ist eine echte Nachweisreaktion und muss
-	// mindestens yellow ergeben.
-	for _, v := range []float64{0.011, 0.025, 0.05, 0.1, 0.2} {
-		rec := models.WaterTestRecord{NitriteMgL: ptrF(v)}
-		a := EvaluateWaterTest(rec)
-		if a.Status != StatusYellow {
-			t.Fatalf("v=%v overall=%q want yellow", v, a.Status)
-		}
-		it, _ := findItem(a.Items, "no2")
-		if it.Status != StatusYellow {
-			t.Fatalf("v=%v no2.status=%q want yellow", v, it.Status)
-		}
+func TestEvaluateWaterTest_NitriteObserveBand(t *testing.T) {
+	rec := models.WaterTestRecord{NitriteMgL: ptrF(0.15)}
+	a := EvaluateWaterTest(rec)
+	if a.Status != StatusObserve {
+		t.Fatalf("overall=%q want observe", a.Status)
 	}
 }
 
-func TestOverallStatus_RedBeatsYellow(t *testing.T) {
+func TestEvaluateWaterTest_NitriteWarningBand(t *testing.T) {
+	rec := models.WaterTestRecord{NitriteMgL: ptrF(0.3)}
+	a := EvaluateWaterTest(rec)
+	if a.Status != StatusWarning {
+		t.Fatalf("overall=%q want warning", a.Status)
+	}
+}
+
+func TestOverallStatus_CriticalBeatsWarning(t *testing.T) {
 	items := []Item{
 		{Key: "ph", Status: StatusGreen},
-		{Key: "no2", Status: StatusYellow},
-		{Key: "no3", Status: StatusRed},
+		{Key: "no2", Status: StatusWarning},
+		{Key: "no3", Status: StatusCritical},
 	}
-	if got := OverallStatus(items); got != StatusRed {
-		t.Fatalf("got %q want red", got)
+	if got := OverallStatus(items); got != StatusCritical {
+		t.Fatalf("got %q want critical", got)
 	}
 }
 
-func TestOverallStatus_YellowBeatsGreen(t *testing.T) {
+func TestOverallStatus_WarningBeatsObserve(t *testing.T) {
+	items := []Item{
+		{Status: StatusObserve},
+		{Status: StatusWarning},
+	}
+	if got := OverallStatus(items); got != StatusWarning {
+		t.Fatalf("got %q want warning", got)
+	}
+}
+
+func TestOverallStatus_ObserveBeatsGreen(t *testing.T) {
 	items := []Item{
 		{Status: StatusGreen},
-		{Status: StatusYellow},
+		{Status: StatusObserve},
 	}
-	if got := OverallStatus(items); got != StatusYellow {
-		t.Fatalf("got %q want yellow", got)
+	if got := OverallStatus(items); got != StatusObserve {
+		t.Fatalf("got %q want observe", got)
 	}
 }
 
@@ -142,27 +146,27 @@ func TestOverallStatus_EmptyIsUnknown(t *testing.T) {
 	}
 }
 
-func TestEvaluateWaterTest_PHOutOfRange(t *testing.T) {
+func TestEvaluateWaterTest_PHCriticalLow(t *testing.T) {
 	rec := models.WaterTestRecord{PH: ptrF(5.4)}
 	a := EvaluateWaterTest(rec)
-	if a.Status != StatusRed {
-		t.Fatalf("pH 5.4 should drive red, got %q", a.Status)
+	if a.Status != StatusCritical {
+		t.Fatalf("pH 5.4 should drive critical, got %q", a.Status)
 	}
 }
 
-func TestEvaluateWaterTest_PHYellowBand(t *testing.T) {
-	rec := models.WaterTestRecord{PH: ptrF(6.2)}
+func TestEvaluateWaterTest_PHObserveBand(t *testing.T) {
+	rec := models.WaterTestRecord{PH: ptrF(6.6)}
 	a := EvaluateWaterTest(rec)
-	if a.Status != StatusYellow {
-		t.Fatalf("pH 6.2 should be yellow, got %q", a.Status)
+	if a.Status != StatusObserve {
+		t.Fatalf("pH 6.6 should be observe, got %q", a.Status)
 	}
 }
 
 func TestEvaluateWaterTest_OxygenLow(t *testing.T) {
 	rec := models.WaterTestRecord{OxygenMgL: ptrF(3.5)}
 	a := EvaluateWaterTest(rec)
-	if a.Status != StatusRed {
-		t.Fatalf("o2 3.5 should be red, got %q", a.Status)
+	if a.Status != StatusWarning {
+		t.Fatalf("o2 3.5 should be warning, got %q", a.Status)
 	}
 }
 
@@ -173,9 +177,10 @@ func TestEvaluateWaterTest_TemperatureBands(t *testing.T) {
 		want Status
 	}{
 		{"normal 25", 25, StatusGreen},
-		{"yellow 20", 20, StatusYellow},
-		{"red 15", 15, StatusRed},
-		{"red 32", 32, StatusRed},
+		{"observe 20", 20, StatusObserve},
+		{"warning 17", 17, StatusWarning},
+		{"critical 15", 15, StatusCritical},
+		{"critical 33", 33, StatusCritical},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -195,8 +200,8 @@ func TestEvaluateWaterTest_AmmoniumThresholds(t *testing.T) {
 	}{
 		{0, StatusGreen},
 		{0.1, StatusGreen},
-		{0.2, StatusYellow},
-		{0.6, StatusRed},
+		{0.15, StatusObserve},
+		{0.6, StatusCritical},
 	}
 	for _, c := range cases {
 		rec := models.WaterTestRecord{AmmoniumMgL: ptrF(c.v)}
@@ -220,7 +225,7 @@ func TestEvaluateWaterTest_ItemContainsLabelAndUnit(t *testing.T) {
 	if it.Unit != "mg/l" {
 		t.Fatalf("unit=%q", it.Unit)
 	}
-	if it.Message == "" {
-		t.Fatalf("message missing")
+	if it.Message == "" || it.StatusLabel == "" {
+		t.Fatalf("message or status_label missing: %+v", it)
 	}
 }
