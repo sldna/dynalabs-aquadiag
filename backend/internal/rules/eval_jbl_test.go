@@ -28,6 +28,29 @@ func TestEvaluate_JBLNitrite06_StillCritical(t *testing.T) {
 	}
 }
 
+func TestEvaluate_LowNitratePanel_NoCriticalDiagnosis(t *testing.T) {
+	rs := mustRules(t)
+	ph, kh, gh, no2, no3, nh4, temp := 7.5, 8.0, 12.0, 0.0, 0.5, 0.0, 25.0
+	in := EvalInput{
+		PH:          &ph,
+		KhDKH:       &kh,
+		GhDGH:       &gh,
+		NitriteMgL:  &no2,
+		NitrateMgL:  &no3,
+		AmmoniumMgL: &nh4,
+		TempC:       &temp,
+	}
+	matches := rs.Evaluate(in)
+	for _, m := range matches {
+		if m.Severity == "critical" {
+			t.Fatalf("unexpected critical match: %+v", m)
+		}
+		if m.DiagnosisType == "nitrate_poisoning" || m.RuleID == "nitrate_poisoning_v1" {
+			t.Fatalf("unexpected nitrate danger diagnosis: %+v", m)
+		}
+	}
+}
+
 func TestEvaluate_JBLPH83_NoSymptoms_NoPHShock(t *testing.T) {
 	rs := mustRules(t)
 	ph := 8.3
