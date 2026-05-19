@@ -25,6 +25,8 @@ func TestEvaluateWaterValue_JBLFreshwater(t *testing.T) {
 		{"no3", 30, StatusGreen},
 		{"no3", 40, StatusObserve},
 		{"no3", 75, StatusWarning},
+		{"no3", 100, StatusWarning},
+		{"no3", 100.1, StatusCritical},
 		{"nh4", 0.1, StatusGreen},
 	}
 	for _, c := range cases {
@@ -46,6 +48,82 @@ func TestEvaluateWaterValue_UnknownParameter(t *testing.T) {
 	if got.Status != StatusUnknown {
 		t.Fatalf("status=%q want unknown", got.Status)
 	}
+}
+
+func TestEvaluateWaterValue_NO3FreshwaterBands(t *testing.T) {
+	profile := ProfileFreshwaterCommunity
+	cases := []struct {
+		value float64
+		want  Status
+	}{
+		{0, StatusGreen},
+		{0.5, StatusGreen},
+		{1, StatusGreen},
+		{30, StatusGreen},
+		{30.1, StatusObserve},
+		{50, StatusObserve},
+		{50.1, StatusWarning},
+		{100, StatusWarning},
+		{100.1, StatusCritical},
+	}
+	for _, c := range cases {
+		got := EvaluateWaterValue("no3", c.value, profile)
+		if got.Status != c.want {
+			t.Errorf("no3=%v status=%q want %q", c.value, got.Status, c.want)
+		}
+	}
+}
+
+func TestEvaluateWaterValue_NO3LowValuesPlantHintOnly(t *testing.T) {
+	for _, v := range []float64{0, 0.5} {
+		got := EvaluateWaterValue("no3", v, ProfileFreshwaterCommunity)
+		if got.Status != StatusGreen {
+			t.Fatalf("no3=%v status=%q want green", v, got.Status)
+		}
+		if got.RecommendationShort == "" {
+			t.Fatalf("no3=%v expected optional plant hint in recommendation_short", v)
+		}
+	}
+	got := EvaluateWaterValue("no3", 5, ProfileFreshwaterCommunity)
+	if got.Status != StatusGreen {
+		t.Fatalf("no3=5 status=%q want green", got.Status)
+	}
+	if got.RecommendationShort != "" {
+		t.Fatalf("no3=5 should not carry low-nitrate plant hint, got %q", got.RecommendationShort)
+	}
+}
+
+func TestEvaluateWaterTest_LowNitratePanelNotCritical(t *testing.T) {
+	ph, kh, gh, no2, no3, nh4, temp := 7.5, 8.0, 12.0, 0.0, 0.5, 0.0, 25.0
+	rec := models.WaterTestRecord{
+		PH:          &ph,
+		KhDKH:       &kh,
+		GhDGH:       &gh,
+		NitriteMgL:  &no2,
+		NitrateMgL:  &no3,
+		AmmoniumMgL: &nh4,
+		TempC:       &temp,
+	}
+	a := EvaluateWaterTest(rec)
+	if a.Status == StatusCritical {
+		t.Fatalf("overall=%q must not be critical; items=%+v", a.Status, a.Items)
+	}
+	it, ok := findItemNO3(a.Items)
+	if !ok {
+		t.Fatal("no3 item missing")
+	}
+	if it.Status != StatusGreen {
+		t.Fatalf("no3.status=%q want green", it.Status)
+	}
+}
+
+func findItemNO3(items []Item) (Item, bool) {
+	for _, it := range items {
+		if it.Key == "no3" {
+			return it, true
+		}
+	}
+	return Item{}, false
 }
 
 func TestEvaluateWaterValue_NH4WithPHContext(t *testing.T) {

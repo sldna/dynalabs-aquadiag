@@ -154,12 +154,14 @@ func evalNO2Freshwater(v float64) WaterValueResult {
 func evalNO3Freshwater(v float64) WaterValueResult {
 	r := WaterValueResult{Parameter: "no3", Value: v, Unit: "mg/l"}
 	switch {
-	case v == 0:
-		return r.with(StatusObserve, "sehr niedrig",
-			"Nitrat ist nicht messbar – für Fische meist unkritisch; bei Pflanzen ggf. Düngung prüfen.", "")
-	case inClosed(v, 1, 30):
-		return r.with(StatusGreen, "im JBL-Normalbereich",
-			"Nitrat liegt im üblichen Bereich.", "")
+	case v >= 0 && v <= 30:
+		msg := "Nitrat liegt im üblichen Bereich."
+		rec := ""
+		if v < 1 {
+			msg = "Nitrat liegt im unkritischen Bereich für Fische."
+			rec = "Nitrat ist sehr niedrig und kann bei Pflanzenproblemen relevant sein."
+		}
+		return r.with(StatusGreen, "im JBL-Normalbereich", msg, rec)
 	case v > 30 && v <= 50:
 		return r.with(StatusObserve, "leicht erhöht",
 			"Nitrat ist erhöht – regelmäßiger Teilwasserwechsel sinnvoll.", "")

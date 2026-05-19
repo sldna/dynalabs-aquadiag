@@ -28,6 +28,27 @@ describe("WaterQualityItemCard", () => {
     expect(screen.getByText(/nicht füttern/)).toBeInTheDocument();
   });
 
+  it("renders low nitrate as green not critical", () => {
+    render(
+      <WaterQualityItemCard
+        item={{
+          key: "no3",
+          label: "Nitrat (NO₃)",
+          value: 0.5,
+          unit: "mg/l",
+          status: "green",
+          message: "Nitrat liegt im unkritischen Bereich für Fische.",
+          recommendation_short:
+            "Nitrat ist sehr niedrig und kann bei Pflanzenproblemen relevant sein.",
+        }}
+      />,
+    );
+
+    const card = screen.getByTestId("water-quality-item-card");
+    expect(card).toHaveAttribute("data-status", "green");
+    expect(card).not.toHaveAttribute("data-status", "critical");
+  });
+
   it("omits unit when not provided", () => {
     render(
       <WaterQualityItemCard
