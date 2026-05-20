@@ -36,7 +36,7 @@ func TestTanks_ListCreate_Update_Delete(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srv := NewServer(sqlDB, nil)
+	srv := NewServer(sqlDB, nil, nil)
 	h := testMux(t, srv)
 
 	t.Run("GET empty list", func(t *testing.T) {
@@ -164,7 +164,7 @@ func TestTanks_ListIncludesLightweightSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srv := NewServer(sqlDB, nil)
+	srv := NewServer(sqlDB, nil, nil)
 	h := testMux(t, srv)
 	ctx := context.Background()
 
@@ -296,7 +296,7 @@ func TestWaterTests_List_Delete_Order(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srv := NewServer(sqlDB, nil)
+	srv := NewServer(sqlDB, nil, nil)
 	h := testMux(t, srv)
 
 	ctx := context.Background()
@@ -415,7 +415,7 @@ func TestTankDelete_RemovesWaterTestsAndDiagnosisResults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srv := NewServer(sqlDB, nil)
+	srv := NewServer(sqlDB, nil, nil)
 	h := testMux(t, srv)
 
 	ctx := context.Background()
@@ -488,7 +488,7 @@ func TestWaterTestDelete_RemovesDiagnosisResults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srv := NewServer(sqlDB, nil)
+	srv := NewServer(sqlDB, nil, nil)
 	h := testMux(t, srv)
 
 	ctx := context.Background()
