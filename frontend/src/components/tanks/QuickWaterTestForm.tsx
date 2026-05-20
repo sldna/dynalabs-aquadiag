@@ -1,9 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { browserApiBase } from "@/lib/api-base";
+import { useJblWaterTestTimers } from "@/hooks/useJblWaterTestTimers";
+import type { JblTimerView } from "@/lib/jbl-timer-runtime";
+import {
+  type JblTimerId,
+  type JblWaterTestTimerGroup,
+  jblTimerGroupsForField,
+  jblTimerGroupsWithoutField,
+  jblTimerId,
+} from "@/lib/jbl-water-test-timers";
 
 type QuickWaterTestFormProps = {
   tankId: number;
@@ -12,26 +21,8 @@ type QuickWaterTestFormProps = {
 
 type ParsedNumber = { value?: number; error?: string };
 
-type TimerKey = "nitrite_no2" | "nitrate_no3" | "ammonium_nh4" | "phosphate_po4" | "iron_fe";
-
-type TimerState = {
-  remainingSec: number;
-  running: boolean;
-};
-
-type TimerConfig = {
-  key: TimerKey;
-  label: string;
-  durationSec: number;
-};
-
-const TIMER_CONFIGS: TimerConfig[] = [
-  { key: "nitrite_no2", label: "NO₂", durationSec: 3 * 60 },
-  { key: "nitrate_no3", label: "NO₃", durationSec: 10 * 60 },
-  { key: "ammonium_nh4", label: "NH₄", durationSec: 5 * 60 },
-  { key: "phosphate_po4", label: "PO₄", durationSec: 10 * 60 },
-  { key: "iron_fe", label: "Fe", durationSec: 10 * 60 },
-];
+const STANDBY_HINT =
+  "Hinweis: Bei gesperrtem Smartphone kann die Benachrichtigung je nach Gerät eingeschränkt sein. Beim Zurückkehren zeigt AquaDiag abgelaufene Timer korrekt an.";
 
 function parseNonNegativeNumber(input: string): ParsedNumber {
   const t = input.trim();
@@ -48,16 +39,6 @@ function mmss(totalSeconds: number): string {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-function initialTimers(): Record<TimerKey, TimerState> {
-  return {
-    nitrite_no2: { remainingSec: 3 * 60, running: false },
-    nitrate_no3: { remainingSec: 10 * 60, running: false },
-    ammonium_nh4: { remainingSec: 5 * 60, running: false },
-    phosphate_po4: { remainingSec: 10 * 60, running: false },
-    iron_fe: { remainingSec: 10 * 60, running: false },
-  };
-}
-
 export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps) {
   const [temperatureC, setTemperatureC] = useState("");
   const [ph, setPh] = useState("");
@@ -70,31 +51,12 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
   const [ironFe, setIronFe] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [timers, setTimers] = useState<Record<TimerKey, TimerState>>(() => initialTimers());
+  const { views, startTimer, pauseTimer, resetTimer } = useJblWaterTestTimers(tankId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedTestId, setSavedTestId] = useState<number | null>(null);
 
-  useEffect(() => {
-    const handle = window.setInterval(() => {
-      setTimers((prev) => {
-        let changed = false;
-        const next = { ...prev };
-        (Object.keys(prev) as TimerKey[]).forEach((key) => {
-          const timer = prev[key];
-          if (!timer.running) return;
-          if (timer.remainingSec <= 1) {
-            next[key] = { remainingSec: 0, running: false };
-          } else {
-            next[key] = { remainingSec: timer.remainingSec - 1, running: true };
-          }
-          changed = true;
-        });
-        return changed ? next : prev;
-      });
-    }, 1000);
-    return () => window.clearInterval(handle);
-  }, []);
+  const standaloneTimerGroups = useMemo(() => jblTimerGroupsWithoutField(), []);
 
   const validation = useMemo(
     () => ({
@@ -112,29 +74,6 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
   );
 
   const hasValidationErrors = Object.values(validation).some((v) => Boolean(v.error));
-
-  const startTimer = (key: TimerKey) => {
-    setTimers((prev) => ({
-      ...prev,
-      [key]: { ...prev[key], running: true },
-    }));
-  };
-
-  const pauseTimer = (key: TimerKey) => {
-    setTimers((prev) => ({
-      ...prev,
-      [key]: { ...prev[key], running: false },
-    }));
-  };
-
-  const resetTimer = (key: TimerKey) => {
-    const cfg = TIMER_CONFIGS.find((item) => item.key === key);
-    if (!cfg) return;
-    setTimers((prev) => ({
-      ...prev,
-      [key]: { remainingSec: cfg.durationSec, running: false },
-    }));
-  };
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -245,8 +184,8 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
           value={nitriteNo2}
           onChange={setNitriteNo2}
           error={validation.nitriteNo2.error}
-          timerKey="nitrite_no2"
-          timers={timers}
+          fieldKey="nitrite_no2"
+          views={views}
           onStartTimer={startTimer}
           onPauseTimer={pauseTimer}
           onResetTimer={resetTimer}
@@ -257,11 +196,6 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
           value={nitrateNo3}
           onChange={setNitrateNo3}
           error={validation.nitrateNo3.error}
-          timerKey="nitrate_no3"
-          timers={timers}
-          onStartTimer={startTimer}
-          onPauseTimer={pauseTimer}
-          onResetTimer={resetTimer}
         />
         <FieldCard
           label="Ammonium (NH₄)"
@@ -269,8 +203,8 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
           value={ammoniumNh4}
           onChange={setAmmoniumNh4}
           error={validation.ammoniumNh4.error}
-          timerKey="ammonium_nh4"
-          timers={timers}
+          fieldKey="ammonium_nh4"
+          views={views}
           onStartTimer={startTimer}
           onPauseTimer={pauseTimer}
           onResetTimer={resetTimer}
@@ -281,11 +215,6 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
           value={phosphatePo4}
           onChange={setPhosphatePo4}
           error={validation.phosphatePo4.error}
-          timerKey="phosphate_po4"
-          timers={timers}
-          onStartTimer={startTimer}
-          onPauseTimer={pauseTimer}
-          onResetTimer={resetTimer}
         />
         <FieldCard
           label="Eisen (Fe)"
@@ -293,8 +222,19 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
           value={ironFe}
           onChange={setIronFe}
           error={validation.ironFe.error}
-          timerKey="iron_fe"
-          timers={timers}
+          fieldKey="iron_fe"
+          views={views}
+          onStartTimer={startTimer}
+          onPauseTimer={pauseTimer}
+          onResetTimer={resetTimer}
+        />
+
+        <JblTimerGroupsSection
+          title="Weitere JBL-Wassertest-Timer"
+          description="Timer für Tests ohne eigenes Eingabefeld – parallel zu den Messwert-Timern nutzbar."
+          standbyHint={STANDBY_HINT}
+          groups={standaloneTimerGroups}
+          views={views}
           onStartTimer={startTimer}
           onPauseTimer={pauseTimer}
           onResetTimer={resetTimer}
@@ -344,6 +284,13 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
   );
 }
 
+type TimerHandlers = {
+  views: Record<JblTimerId, JblTimerView>;
+  onStartTimer: (timerId: JblTimerId) => void;
+  onPauseTimer: (timerId: JblTimerId) => void;
+  onResetTimer: (timerId: JblTimerId) => void;
+};
+
 type FieldCardProps = {
   label: string;
   unit: string;
@@ -351,12 +298,8 @@ type FieldCardProps = {
   onChange: (value: string) => void;
   error?: string;
   placeholder?: string;
-  timerKey?: TimerKey;
-  timers?: Record<TimerKey, TimerState>;
-  onStartTimer?: (key: TimerKey) => void;
-  onPauseTimer?: (key: TimerKey) => void;
-  onResetTimer?: (key: TimerKey) => void;
-};
+  fieldKey?: string;
+} & Partial<TimerHandlers>;
 
 function FieldCard({
   label,
@@ -365,14 +308,13 @@ function FieldCard({
   onChange,
   error,
   placeholder,
-  timerKey,
-  timers,
+  fieldKey,
+  views,
   onStartTimer,
   onPauseTimer,
   onResetTimer,
 }: FieldCardProps) {
-  const timerCfg = timerKey ? TIMER_CONFIGS.find((item) => item.key === timerKey) : undefined;
-  const timer = timerKey && timers ? timers[timerKey] : undefined;
+  const timerGroups = fieldKey ? jblTimerGroupsForField(fieldKey) : [];
 
   return (
     <section className="rounded-card border border-aqua-deep/10 bg-white p-4">
@@ -401,32 +343,158 @@ function FieldCard({
         </p>
       ) : null}
 
-      {timerCfg && timer && onStartTimer && onPauseTimer && onResetTimer ? (
-        <div className="mt-3 rounded-lg border border-aqua-blue/20 bg-aqua-soft/60 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-aqua-deep/60">
-            JBL Timer {timerCfg.label}
-          </p>
-          <p className="mt-1 font-mono text-lg font-semibold text-aqua-deep">
-            {mmss(timer.remainingSec)}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => (timer.running ? onPauseTimer(timerCfg.key) : onStartTimer(timerCfg.key))}
-              className="min-h-[40px] rounded-button bg-aqua-blue px-3 py-2 text-xs font-semibold text-white hover:bg-[#168EAA]"
-            >
-              {timer.running ? "Pause" : "Start"}
-            </button>
-            <button
-              type="button"
-              onClick={() => onResetTimer(timerCfg.key)}
-              className="min-h-[40px] rounded-button border border-aqua-blue bg-white px-3 py-2 text-xs font-semibold text-aqua-deep hover:bg-aqua-soft"
-            >
-              Reset
-            </button>
-          </div>
+      {views && onStartTimer && onPauseTimer && onResetTimer && timerGroups.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {timerGroups.map((group) => (
+            <JblTimerGroupPanel
+              key={group.groupId}
+              group={group}
+              views={views}
+              onStartTimer={onStartTimer}
+              onPauseTimer={onPauseTimer}
+              onResetTimer={onResetTimer}
+            />
+          ))}
         </div>
       ) : null}
     </section>
+  );
+}
+
+type JblTimerGroupsSectionProps = TimerHandlers & {
+  title: string;
+  description?: string;
+  standbyHint?: string;
+  groups: JblWaterTestTimerGroup[];
+};
+
+function JblTimerGroupsSection({
+  title,
+  description,
+  standbyHint,
+  groups,
+  views,
+  onStartTimer,
+  onPauseTimer,
+  onResetTimer,
+}: JblTimerGroupsSectionProps) {
+  if (groups.length === 0) return null;
+
+  return (
+    <section className="rounded-card border border-aqua-deep/10 bg-white p-4">
+      <h3 className="text-sm font-semibold text-aqua-deep">{title}</h3>
+      {description ? <p className="mt-1 text-xs text-aqua-deep/70">{description}</p> : null}
+      {standbyHint ? (
+        <p className="mt-2 rounded-lg border border-aqua-blue/20 bg-aqua-soft/50 px-3 py-2 text-xs text-aqua-deep/80">
+          {standbyHint}
+        </p>
+      ) : null}
+      <div className="mt-3 space-y-3">
+        {groups.map((group) => (
+          <JblTimerGroupPanel
+            key={group.groupId}
+            group={group}
+            views={views}
+            onStartTimer={onStartTimer}
+            onPauseTimer={onPauseTimer}
+            onResetTimer={onResetTimer}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+type JblTimerGroupPanelProps = TimerHandlers & {
+  group: JblWaterTestTimerGroup;
+};
+
+function JblTimerGroupPanel({
+  group,
+  views,
+  onStartTimer,
+  onPauseTimer,
+  onResetTimer,
+}: JblTimerGroupPanelProps) {
+  return (
+    <div className="space-y-2">
+      {group.steps.map((step) => {
+        const timerId = jblTimerId(group.groupId, step.stepId);
+        const view = views[timerId];
+        if (!view) return null;
+
+        const heading =
+          group.steps.length > 1
+            ? `JBL Timer ${group.displayName} – ${step.stepLabel}`
+            : `JBL Timer ${group.displayName}`;
+
+        return (
+          <JblTimerPanel
+            key={timerId}
+            heading={heading}
+            view={view}
+            onStart={() => (view.isRunning ? onPauseTimer(timerId) : onStartTimer(timerId))}
+            onReset={() => onResetTimer(timerId)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+type JblTimerPanelProps = {
+  heading: string;
+  view: JblTimerView;
+  onStart: () => void;
+  onReset: () => void;
+};
+
+function JblTimerPanel({ heading, view, onStart, onReset }: JblTimerPanelProps) {
+  const expired = view.isExpired;
+
+  return (
+    <div
+      className={`rounded-lg border p-3 ${
+        expired
+          ? "border-status-critical bg-status-critical/10 ring-2 ring-status-critical/30"
+          : "border-aqua-blue/20 bg-aqua-soft/60"
+      }`}
+    >
+      <p
+        className={`text-xs font-semibold uppercase tracking-wide ${
+          expired ? "text-status-critical" : "text-aqua-deep/60"
+        }`}
+      >
+        {heading}
+      </p>
+      <p
+        className={`mt-1 font-mono text-lg font-semibold ${expired ? "text-status-critical" : "text-aqua-deep"}`}
+        aria-live="polite"
+      >
+        {expired ? "00:00" : mmss(view.remainingSeconds)}
+      </p>
+      {view.expiredMessage ? (
+        <p role="status" className="mt-2 text-sm font-semibold text-status-critical">
+          {view.expiredMessage}
+        </p>
+      ) : null}
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onStart}
+          disabled={expired}
+          className="min-h-[40px] rounded-button bg-aqua-blue px-3 py-2 text-xs font-semibold text-white hover:bg-[#168EAA] disabled:opacity-50"
+        >
+          {view.isRunning ? "Pause" : expired ? "Abgelaufen" : "Start"}
+        </button>
+        <button
+          type="button"
+          onClick={onReset}
+          className="min-h-[40px] rounded-button border border-aqua-blue bg-white px-3 py-2 text-xs font-semibold text-aqua-deep hover:bg-aqua-soft"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
   );
 }
