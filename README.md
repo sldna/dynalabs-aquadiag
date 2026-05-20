@@ -41,6 +41,7 @@ Diagnose mit klaren nächsten Schritten erhalten.
 - [Project Structure](#project-structure)
 - [Configuration Reference](#configuration-reference)
 - [API Overview](#api-overview)
+- [Quick Water Test Logging](#quick-water-test-logging)
 - [Ampelsystem für Wasserwerte (M3.5)](#ampelsystem-für-wasserwerte-m35)
 - [Severity-Werte](#severity-werte)
 - [Roadmap](#roadmap)
@@ -57,6 +58,8 @@ Diagnose mit klaren nächsten Schritten erhalten.
   verwaiste Datensätze
 - **Wasserwert-Historie** pro Becken (neueste zuerst), inklusive Symptome und
   Diagnoseverknüpfung (`diagnosis_result_id`)
+- **Quick Water Test Logging**: schnelle mobile Erfassung ohne Diagnose-Start
+  über `/tanks/{id}/water-tests/new`, inkl. lokaler JBL-Timer (NO₂/NO₃/NH₄/PO₄/Fe)
 - **Verlaufsgrafiken** auf der Becken-Detailseite (`/dashboard/tanks/{id}`):
   einfache SVG-Line-Charts für pH, Nitrit, Nitrat, Temperatur (optional KH, GH,
   NH₄, CO₂) mit Zeitraumfilter 7/30 Tage/alle – reine Visualisierung, keine
@@ -345,6 +348,7 @@ Die vollständige API-Referenz mit Beispiel-Bodies und Antwort-Schemata steht in
 | PUT      | `/v1/tanks/{id}`                       | Becken partiell aktualisieren                        |
 | DELETE   | `/v1/tanks/{id}`                       | Becken + abhängige Daten löschen                     |
 | GET      | `/v1/tanks/{id}/water-tests`           | Wassertests eines Beckens (neueste zuerst)           |
+| POST     | `/v1/tanks/{id}/water-tests`           | Messung ohne Diagnose speichern                       |
 | GET      | `/v1/water-tests/{id}`                 | einzelner Wassertest inkl. Symptome                  |
 | DELETE   | `/v1/water-tests/{id}`                 | Wassertest + abhängige Diagnosen löschen (Cascade)   |
 | POST     | `/v1/diagnose`                         | Diagnose erzeugen (Symptome + optionale Wasserwerte) |
@@ -360,6 +364,33 @@ curl -sS -X POST "http://localhost:8080/v1/diagnose" \
     "water": { "nitrite_mg_l": 0.4 },
     "symptoms": []
   }' | jq '{ status, top_rule: .top_diagnosis.rule_id, meta }'
+```
+
+## Quick Water Test Logging
+
+Für schnelle Smartphone-Erfassung ohne Analyse:
+
+- Frontend-Route: `/tanks/{id}/water-tests/new`
+- API-Route: `POST /v1/tanks/{id}/water-tests`
+- Alle Wasserwerte sind optional, aber mindestens ein Messwert ist erforderlich.
+- Die Diagnose-Engine wird dabei **nicht** automatisch gestartet.
+
+Beispiel:
+
+```bash
+curl -sS -X POST "http://localhost:8080/v1/tanks/3/water-tests" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "temperature_c": 24.9,
+    "ph": 7.1,
+    "kh": 5,
+    "nitrite_no2": 0.02,
+    "nitrate_no3": 15,
+    "ammonium_nh4": 0.05,
+    "phosphate_po4": 0.2,
+    "iron_fe": 0.03,
+    "notes": "Vor Wasserwechsel"
+  }'
 ```
 
 ## Ampelsystem für Wasserwerte (M3.5)

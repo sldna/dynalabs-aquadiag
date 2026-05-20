@@ -26,6 +26,8 @@ type WaterTestRecord struct {
 	NitriteMgL          *float64 `json:"nitrite_mg_l,omitempty"`
 	NitrateMgL          *float64 `json:"nitrate_mg_l,omitempty"`
 	AmmoniumMgL         *float64 `json:"ammonium_mg_l,omitempty"`
+	PhosphatePO4        *float64 `json:"phosphate_po4,omitempty"`
+	IronFe              *float64 `json:"iron_fe,omitempty"`
 	OxygenMgL           *float64 `json:"oxygen_mg_l,omitempty"`
 	OxygenSaturationPct *float64 `json:"oxygen_saturation_pct,omitempty"`
 	CO2MgL              *float64 `json:"co2_mg_l,omitempty"`
@@ -73,12 +75,20 @@ func (r *DiagnoseRequest) UnmarshalJSON(data []byte) error {
 
 		// Flat water fields (aliases for Water.* when Water.* is nil)
 		PH                  *float64 `json:"ph"`
+		Kh                  *float64 `json:"kh"`
 		KhDKH               *float64 `json:"kh_dkh"`
+		Gh                  *float64 `json:"gh"`
 		GhDGH               *float64 `json:"gh_dgh"`
+		TemperatureC        *float64 `json:"temperature_c"`
 		TempC               *float64 `json:"temp_c"`
+		NitriteNO2          *float64 `json:"nitrite_no2"`
 		NitriteMgL          *float64 `json:"nitrite_mg_l"`
+		NitrateNO3          *float64 `json:"nitrate_no3"`
 		NitrateMgL          *float64 `json:"nitrate_mg_l"`
+		AmmoniumNH4         *float64 `json:"ammonium_nh4"`
 		AmmoniumMgL         *float64 `json:"ammonium_mg_l"`
+		PhosphatePO4        *float64 `json:"phosphate_po4"`
+		IronFe              *float64 `json:"iron_fe"`
 		OxygenMgL           *float64 `json:"oxygen_mg_l"`
 		OxygenSaturationPct *float64 `json:"oxygen_saturation_pct"`
 		CO2MgL              *float64 `json:"co2_mg_l"`
@@ -96,21 +106,45 @@ func (r *DiagnoseRequest) UnmarshalJSON(data []byte) error {
 	}
 	if r.Water.KhDKH == nil {
 		r.Water.KhDKH = aux.KhDKH
+		if r.Water.KhDKH == nil {
+			r.Water.KhDKH = aux.Kh
+		}
 	}
 	if r.Water.GhDGH == nil {
 		r.Water.GhDGH = aux.GhDGH
+		if r.Water.GhDGH == nil {
+			r.Water.GhDGH = aux.Gh
+		}
 	}
 	if r.Water.TempC == nil {
 		r.Water.TempC = aux.TempC
+		if r.Water.TempC == nil {
+			r.Water.TempC = aux.TemperatureC
+		}
 	}
 	if r.Water.NitriteMgL == nil {
 		r.Water.NitriteMgL = aux.NitriteMgL
+		if r.Water.NitriteMgL == nil {
+			r.Water.NitriteMgL = aux.NitriteNO2
+		}
 	}
 	if r.Water.NitrateMgL == nil {
 		r.Water.NitrateMgL = aux.NitrateMgL
+		if r.Water.NitrateMgL == nil {
+			r.Water.NitrateMgL = aux.NitrateNO3
+		}
 	}
 	if r.Water.AmmoniumMgL == nil {
 		r.Water.AmmoniumMgL = aux.AmmoniumMgL
+		if r.Water.AmmoniumMgL == nil {
+			r.Water.AmmoniumMgL = aux.AmmoniumNH4
+		}
+	}
+	if r.Water.PhosphatePO4 == nil {
+		r.Water.PhosphatePO4 = aux.PhosphatePO4
+	}
+	if r.Water.IronFe == nil {
+		r.Water.IronFe = aux.IronFe
 	}
 	if r.Water.OxygenMgL == nil {
 		r.Water.OxygenMgL = aux.OxygenMgL
@@ -143,6 +177,8 @@ type WaterTestInput struct {
 	NitriteMgL          *float64 `json:"nitrite_mg_l"`
 	NitrateMgL          *float64 `json:"nitrate_mg_l"`
 	AmmoniumMgL         *float64 `json:"ammonium_mg_l"`
+	PhosphatePO4        *float64 `json:"phosphate_po4"`
+	IronFe              *float64 `json:"iron_fe"`
 	OxygenMgL           *float64 `json:"oxygen_mg_l"`
 	OxygenSaturationPct *float64 `json:"oxygen_saturation_pct"`
 	CO2MgL              *float64 `json:"co2_mg_l"`
@@ -154,23 +190,55 @@ func (w *WaterTestInput) UnmarshalJSON(data []byte) error {
 	type raw WaterTestInput
 	aux := struct {
 		raw
-		LegacyNitrite  *float64 `json:"nitrite_ppm"`
-		LegacyNitrate  *float64 `json:"nitrate_ppm"`
-		LegacyAmmonium *float64 `json:"ammonia_ppm"`
-		LegacyCO2      *float64 `json:"co2_ppm"`
+		LegacyNitrite     *float64 `json:"nitrite_ppm"`
+		LegacyNitrate     *float64 `json:"nitrate_ppm"`
+		LegacyAmmonium    *float64 `json:"ammonia_ppm"`
+		LegacyPhosphate   *float64 `json:"phosphate_mg_l"`
+		LegacyIron        *float64 `json:"iron_mg_l"`
+		LegacyCO2         *float64 `json:"co2_ppm"`
+		LegacyKh          *float64 `json:"kh"`
+		LegacyGh          *float64 `json:"gh"`
+		LegacyTempC       *float64 `json:"temperature_c"`
+		LegacyNitriteNO2  *float64 `json:"nitrite_no2"`
+		LegacyNitrateNO3  *float64 `json:"nitrate_no3"`
+		LegacyAmmoniumNH4 *float64 `json:"ammonium_nh4"`
 	}{}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
 	*w = WaterTestInput(aux.raw)
+	if w.KhDKH == nil {
+		w.KhDKH = aux.LegacyKh
+	}
+	if w.GhDGH == nil {
+		w.GhDGH = aux.LegacyGh
+	}
+	if w.TempC == nil {
+		w.TempC = aux.LegacyTempC
+	}
 	if w.NitriteMgL == nil {
 		w.NitriteMgL = aux.LegacyNitrite
+		if w.NitriteMgL == nil {
+			w.NitriteMgL = aux.LegacyNitriteNO2
+		}
 	}
 	if w.NitrateMgL == nil {
 		w.NitrateMgL = aux.LegacyNitrate
+		if w.NitrateMgL == nil {
+			w.NitrateMgL = aux.LegacyNitrateNO3
+		}
 	}
 	if w.AmmoniumMgL == nil {
 		w.AmmoniumMgL = aux.LegacyAmmonium
+		if w.AmmoniumMgL == nil {
+			w.AmmoniumMgL = aux.LegacyAmmoniumNH4
+		}
+	}
+	if w.PhosphatePO4 == nil {
+		w.PhosphatePO4 = aux.LegacyPhosphate
+	}
+	if w.IronFe == nil {
+		w.IronFe = aux.LegacyIron
 	}
 	if w.CO2MgL == nil {
 		w.CO2MgL = aux.LegacyCO2

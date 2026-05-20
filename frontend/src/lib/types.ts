@@ -52,6 +52,8 @@ export type WaterTest = {
   nitrite_mg_l?: number | null;
   nitrate_mg_l?: number | null;
   ammonium_mg_l?: number | null;
+  phosphate_po4?: number | null;
+  iron_fe?: number | null;
   oxygen_mg_l?: number | null;
   oxygen_saturation_pct?: number | null;
   co2_mg_l?: number | null;

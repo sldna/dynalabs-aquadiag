@@ -48,7 +48,14 @@ func (s *Server) routeV1Tanks(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(parts) == 2 && parts[1] == "water-tests" {
-			writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Für Wassertests ist nur GET erlaubt.")
+			switch r.Method {
+			case http.MethodGet:
+				s.handleTankWaterTests(w, r, parts[0])
+			case http.MethodPost:
+				s.handleCreateTankWaterTest(w, r, parts[0])
+			default:
+				writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Für Wassertests sind GET oder POST erlaubt.")
+			}
 			return
 		}
 	}

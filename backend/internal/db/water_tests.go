@@ -22,8 +22,8 @@ func InsertWaterTest(ctx context.Context, q DBTX, tankID int64, w models.WaterTe
 	res, err := q.ExecContext(ctx, `
 INSERT INTO water_tests (
   tank_id, ph, kh_dkh, gh_dgh, temp_c, nitrite_mg_l, nitrate_mg_l, ammonium_mg_l,
-  oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes
-) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+  phosphate_po4, iron_fe, oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		tankID,
 		nullFloat(w.PH),
 		nullFloat(w.KhDKH),
@@ -32,6 +32,8 @@ INSERT INTO water_tests (
 		nullFloat(w.NitriteMgL),
 		nullFloat(w.NitrateMgL),
 		nullFloat(w.AmmoniumMgL),
+		nullFloat(w.PhosphatePO4),
+		nullFloat(w.IronFe),
 		nullFloat(w.OxygenMgL),
 		nullFloat(w.OxygenSaturationPct),
 		nullFloat(w.CO2MgL),
@@ -46,7 +48,7 @@ INSERT INTO water_tests (
 
 const waterTestSelectCols = `
 id, tank_id, ph, kh_dkh, gh_dgh, temp_c, nitrite_mg_l, nitrate_mg_l, ammonium_mg_l,
-oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes, created_at,
+phosphate_po4, iron_fe, oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes, created_at,
 (SELECT dr.id FROM diagnosis_results dr WHERE dr.water_test_id = water_tests.id ORDER BY dr.id DESC LIMIT 1) AS diagnosis_result_id`
 
 // ListWaterTestsByTank returns water tests for a tank, newest id first.
@@ -106,7 +108,7 @@ func DeleteWaterTestCascade(ctx context.Context, tx *sql.Tx, waterTestID int64) 
 
 func scanWaterTestRow(scan func(dest ...any) error) (models.WaterTestRecord, error) {
 	var rec models.WaterTestRecord
-	var ph, kh, gh, temp, no2, no3, nh4, o2, o2sat, co2 sql.NullFloat64
+	var ph, kh, gh, temp, no2, no3, nh4, po4, fe, o2, o2sat, co2 sql.NullFloat64
 	var notes sql.NullString
 	var diagnosisID sql.NullInt64
 	var symJSON string
@@ -120,6 +122,8 @@ func scanWaterTestRow(scan func(dest ...any) error) (models.WaterTestRecord, err
 		&no2,
 		&no3,
 		&nh4,
+		&po4,
+		&fe,
 		&o2,
 		&o2sat,
 		&co2,
@@ -138,6 +142,8 @@ func scanWaterTestRow(scan func(dest ...any) error) (models.WaterTestRecord, err
 	rec.NitriteMgL = ptrFloat64(no2)
 	rec.NitrateMgL = ptrFloat64(no3)
 	rec.AmmoniumMgL = ptrFloat64(nh4)
+	rec.PhosphatePO4 = ptrFloat64(po4)
+	rec.IronFe = ptrFloat64(fe)
 	rec.OxygenMgL = ptrFloat64(o2)
 	rec.OxygenSaturationPct = ptrFloat64(o2sat)
 	rec.CO2MgL = ptrFloat64(co2)

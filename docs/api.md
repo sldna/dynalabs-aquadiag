@@ -133,9 +133,45 @@ Antwort:
 Sortierung: neueste zuerst (`id DESC`).
 
 Felder pro Messung (Auszug): `ph`, `kh_dkh`, `gh_dgh`, `temp_c`, `nitrite_mg_l`,
-`nitrate_mg_l`, `ammonium_mg_l`, `oxygen_mg_l`, `oxygen_saturation_pct`,
-`co2_mg_l`, `symptoms`, `created_at`, optional `diagnosis_result_id` (wenn eine
-Diagnose zu dieser Messung existiert).
+`nitrate_mg_l`, `ammonium_mg_l`, `phosphate_po4`, `iron_fe`, `oxygen_mg_l`,
+`oxygen_saturation_pct`, `co2_mg_l`, `symptoms`, `created_at`, optional
+`diagnosis_result_id` (wenn eine Diagnose zu dieser Messung existiert).
+
+### `POST /v1/tanks/{id}/water-tests`
+
+Speichert einen Wassertest **ohne** automatische Diagnoseauslösung.
+
+Beispiel-Body (Quick-Logging, mobile UI):
+
+```json
+{
+  "temperature_c": 24.9,
+  "ph": 7.1,
+  "kh": 5,
+  "gh": 8,
+  "nitrite_no2": 0.02,
+  "nitrate_no3": 15,
+  "ammonium_nh4": 0.05,
+  "phosphate_po4": 0.2,
+  "iron_fe": 0.03,
+  "notes": "Vor Wasserwechsel gemessen"
+}
+```
+
+Alternativ akzeptiert die API auch die bestehenden Feldnamen (`temp_c`,
+`kh_dkh`, `gh_dgh`, `nitrite_mg_l`, `nitrate_mg_l`, `ammonium_mg_l`) sowie
+verschachteltes JSON unter `water`.
+
+Validierung:
+
+- `tank_id` (Pfadparameter) muss existieren
+- alle Wasserwerte sind optional
+- mindestens ein Messwert ist erforderlich (`notes` alleine reicht nicht)
+- numerische Werte dürfen nicht negativ sein
+
+Antwort `201` enthält den gespeicherten `water_test` (inkl. `id`, `tank_id`,
+`created_at`, Ampel-Felder). `diagnosis_result_id` bleibt leer, bis eine
+Analyse explizit gestartet wird.
 
 ### `GET /v1/water-tests/{id}`
 

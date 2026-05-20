@@ -186,6 +186,12 @@ function TankDetail({
             >
               Becken bearbeiten
             </Link>
+            <Link
+              href={`/tanks/${tank.id}/water-tests/new`}
+              className="flex min-h-[44px] w-full items-center justify-center rounded-button bg-aqua-blue px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#168EAA]"
+            >
+              Wasserwerte erfassen
+            </Link>
             <DeleteTankDialog tankId={tank.id} tankName={tank.name} />
           </section>
         </aside>

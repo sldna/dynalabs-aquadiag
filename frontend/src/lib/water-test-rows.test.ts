@@ -22,6 +22,8 @@ describe("measurementRowsForWaterTest", () => {
         ph: 7.2,
         nitrate_mg_l: 12,
         kh_dkh: 6,
+        phosphate_po4: 0.4,
+        iron_fe: 0.05,
         co2_mg_l: 15,
         oxygen_saturation_pct: 98,
       }),
@@ -32,6 +34,8 @@ describe("measurementRowsForWaterTest", () => {
       "Nitrat NO₃",
       "pH-Wert",
       "KH",
+      "Phosphat PO₄",
+      "Eisen Fe",
       "CO₂",
       "O₂-Sättigung",
     ]);

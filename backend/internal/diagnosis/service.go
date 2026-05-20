@@ -219,6 +219,8 @@ func appendNonFiniteWaterErrors(errs *[]models.FieldError, w models.WaterTestInp
 	chk(w.NitriteMgL, "water.nitrite_mg_l")
 	chk(w.NitrateMgL, "water.nitrate_mg_l")
 	chk(w.AmmoniumMgL, "water.ammonium_mg_l")
+	chk(w.PhosphatePO4, "water.phosphate_po4")
+	chk(w.IronFe, "water.iron_fe")
 	chk(w.OxygenMgL, "water.oxygen_mg_l")
 	chk(w.OxygenSaturationPct, "water.oxygen_saturation_pct")
 	chk(w.CO2MgL, "water.co2_mg_l")
@@ -232,6 +234,7 @@ func hasMeasurementsOrSymptoms(w models.WaterTestInput, symptoms []string) bool 
 	}
 	return w.PH != nil || w.KhDKH != nil || w.GhDGH != nil || w.TempC != nil ||
 		w.NitriteMgL != nil || w.NitrateMgL != nil || w.AmmoniumMgL != nil ||
+		w.PhosphatePO4 != nil || w.IronFe != nil || w.OxygenMgL != nil ||
 		w.OxygenSaturationPct != nil || w.CO2MgL != nil ||
 		(w.Notes != nil && strings.TrimSpace(*w.Notes) != "")
 }

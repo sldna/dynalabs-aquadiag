@@ -41,6 +41,12 @@ export function measurementRowsForWaterTest(test: WaterTest): {
   if (presentNumber(test.ammonium_mg_l)) {
     rows.push({ label: "Ammonium NH₄", value: `${fmtNum(test.ammonium_mg_l)} mg/l` });
   }
+  if (presentNumber(test.phosphate_po4)) {
+    rows.push({ label: "Phosphat PO₄", value: `${fmtNum(test.phosphate_po4)} mg/l` });
+  }
+  if (presentNumber(test.iron_fe)) {
+    rows.push({ label: "Eisen Fe", value: `${fmtNum(test.iron_fe)} mg/l` });
+  }
   if (presentNumber(test.co2_mg_l)) {
     rows.push({ label: "CO₂", value: `${fmtNum(test.co2_mg_l)} mg/l` });
   }
