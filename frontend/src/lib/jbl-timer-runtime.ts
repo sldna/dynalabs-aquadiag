@@ -271,4 +271,5 @@ export function notifyTimerExpiry(timerId: JblTimerId): void {
   void timerId;
 }
 
+export type { JblTimerId } from "./jbl-water-test-timers";
 export { jblTimerId };
