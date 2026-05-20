@@ -1,0 +1,90 @@
+# JBL-Wassertest-Timer (Einwirkzeiten in Sekunden).
+timers:
+  - test_key: no2
+    label: NO₂
+    field_key: nitrite_no2
+    steps:
+      - step_id: no2
+        label: Einwirkzeit
+        duration_seconds: 300
+
+  - test_key: nh4
+    label: NH₄
+    field_key: ammonium_nh4
+    steps:
+      - step_id: nh4
+        label: Einwirkzeit
+        duration_seconds: 900
+
+  - test_key: ph_74_90
+    label: pH 7,4–9,0
+    steps:
+      - step_id: ph_74_90
+        label: Einwirkzeit
+        duration_seconds: 180
+
+  - test_key: ph_60_76
+    label: pH 6,0–7,6
+    steps:
+      - step_id: ph_60_76
+        label: Einwirkzeit
+        duration_seconds: 180
+
+  - test_key: ph_30_100
+    label: pH 3,0–10,0
+    steps:
+      - step_id: ph_30_100
+        label: Einwirkzeit
+        duration_seconds: 300
+
+  - test_key: mg
+    label: Mg
+    steps:
+      - step_id: mg
+        label: Einwirkzeit
+        duration_seconds: 60
+
+  - test_key: o2
+    label: O₂
+    steps:
+      - step_id: o2_step1
+        label: Schritt 1
+        duration_seconds: 30
+      - step_id: o2_step2
+        label: Schritt 2
+        duration_seconds: 600
+
+  - test_key: cu
+    label: Cu
+    steps:
+      - step_id: cu
+        label: Einwirkzeit
+        duration_seconds: 900
+
+  - test_key: k
+    label: K
+    steps:
+      - step_id: k
+        label: Einwirkzeit
+        duration_seconds: 60
+
+  - test_key: fe
+    label: Fe
+    field_key: iron_fe
+    steps:
+      - step_id: fe
+        label: Einwirkzeit
+        duration_seconds: 600
+
+  - test_key: sio2
+    label: SiO₂
+    steps:
+      - step_id: sio2_step1
+        label: Schritt 1
+        duration_seconds: 180
+      - step_id: sio2_step2
+        label: Schritt 2
+        duration_seconds: 180
+      - step_id: sio2_step3
+        label: Schritt 3
+        duration_seconds: 180

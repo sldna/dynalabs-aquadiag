@@ -349,6 +349,7 @@ Die vollständige API-Referenz mit Beispiel-Bodies und Antwort-Schemata steht in
 | DELETE   | `/v1/tanks/{id}`                       | Becken + abhängige Daten löschen                     |
 | GET      | `/v1/tanks/{id}/water-tests`           | Wassertests eines Beckens (neueste zuerst)           |
 | POST     | `/v1/tanks/{id}/water-tests`           | Messung ohne Diagnose speichern                       |
+| GET      | `/v1/water-test-config`                | JBL-Profile, Warnschwellen und Timer (YAML-Config)   |
 | GET      | `/v1/water-tests/{id}`                 | einzelner Wassertest inkl. Symptome                  |
 | DELETE   | `/v1/water-tests/{id}`                 | Wassertest + abhängige Diagnosen löschen (Cascade)   |
 | POST     | `/v1/diagnose`                         | Diagnose erzeugen (Symptome + optionale Wasserwerte) |
@@ -372,8 +373,25 @@ Für schnelle Smartphone-Erfassung ohne Analyse:
 
 - Frontend-Route: `/tanks/{id}/water-tests/new`
 - API-Route: `POST /v1/tanks/{id}/water-tests`
+- Config: `GET /v1/water-test-config` (JBL-Testprofile, Warnschwellen, Timer)
 - Alle Wasserwerte sind optional, aber mindestens ein Messwert ist erforderlich.
 - Die Diagnose-Engine wird dabei **nicht** automatisch gestartet.
+
+### Konfigurierbare Wassertest-Profile (YAML)
+
+Ohne Codeänderung anpassbar unter `backend/config/`:
+
+| Datei | Inhalt |
+|-------|--------|
+| `water-tests.yaml` | Test-Key, Label, Marke, Einheit, Eingabetyp, auswählbare Werte |
+| `water-test-thresholds.yaml` | Warnschwellen (`ok` / `watch` / `critical`) pro Test-Key |
+| `water-test-timers.yaml` | JBL-Einwirkzeiten (auch Mehrschritt, z. B. O₂, SiO₂) |
+
+Umgebungsvariable: `WATER_TEST_CONFIG_DIR` (Default im Container: `/app/config`).
+
+**Hinweis:** Diese Config steuert Schnellerfassung, Ampel-Hinweise in der UI und Timer.
+Die **Diagnose-Rule-Engine** (`rules/aquarium-rules.yaml`) bleibt unverändert die
+alleinige Quelle für Diagnose, Severity, Confidence und Maßnahmen.
 
 Beispiel:
 

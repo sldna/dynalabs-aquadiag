@@ -1,5 +1,10 @@
 package waterquality
 
+// Hinweis: Schnellerfassung und UI-Ampel in QuickWaterTestForm nutzen
+// backend/config/water-test-thresholds.yaml (siehe internal/config).
+// Dieses Package bleibt für water_quality_* in gespeicherten Wassertest-API-Responses.
+// TODO(#config-thresholds-unify): Optional später API-Ampel aus YAML ableiten.
+
 import "math"
 
 // ProfileFreshwaterCommunity is the default V1 tank profile (community freshwater).

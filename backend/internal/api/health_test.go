@@ -73,7 +73,7 @@ func TestHealth_OK(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 
-	NewServer(nil, nil).handleHealth(rec, req)
+	NewServer(nil, nil, nil).handleHealth(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
@@ -92,7 +92,7 @@ func TestHealth_MethodNotAllowed(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/health", nil)
 	rec := httptest.NewRecorder()
 
-	NewServer(nil, nil).handleHealth(rec, req)
+	NewServer(nil, nil, nil).handleHealth(rec, req)
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status=%d", rec.Code)
@@ -121,7 +121,7 @@ func TestDiagnose_MatchedResponse_NitriteRule(t *testing.T) {
 	}
 
 	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
-	srv := NewServer(sqlDB, svc)
+	srv := NewServer(sqlDB, svc, nil)
 
 	nitrite := 0.5
 	body, _ := json.Marshal(map[string]any{
@@ -192,7 +192,7 @@ func TestDiagnose_CO2MgL_MatchesCo2PhKhRiskV1(t *testing.T) {
 	}
 
 	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
-	srv := NewServer(sqlDB, svc)
+	srv := NewServer(sqlDB, svc, nil)
 
 	body, _ := json.Marshal(map[string]any{
 		"tank":     map[string]any{"name": "C", "volume_liters": 80},
@@ -253,7 +253,7 @@ func TestDiagnose_FlatCO2MgL_Gte30_MatchesCo2PhKhRiskV1(t *testing.T) {
 	}
 
 	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
-	srv := NewServer(sqlDB, svc)
+	srv := NewServer(sqlDB, svc, nil)
 
 	// Create a tank and reference it via tank_id (flat water input at top-level).
 	tx, err := sqlDB.Begin()
@@ -324,7 +324,7 @@ func TestDiagnose_FlatCO2MgL_29_9_DoesNotMatchCo2PhKhRiskV1(t *testing.T) {
 	}
 
 	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
-	srv := NewServer(sqlDB, svc)
+	srv := NewServer(sqlDB, svc, nil)
 
 	tx, err := sqlDB.Begin()
 	if err != nil {
@@ -394,7 +394,7 @@ func TestDiagnose_AIErrorCode_DevelopmentIncluded(t *testing.T) {
 	}
 
 	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
-	srv := NewServer(sqlDB, svc)
+	srv := NewServer(sqlDB, svc, nil)
 
 	body, _ := json.Marshal(map[string]any{
 		"tank":     map[string]any{"name": "AI Dev", "volume_liters": 80},
@@ -448,7 +448,7 @@ func TestDiagnose_AIErrorCode_ProductionHidden(t *testing.T) {
 	}
 
 	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
-	srv := NewServer(sqlDB, svc)
+	srv := NewServer(sqlDB, svc, nil)
 
 	body, _ := json.Marshal(map[string]any{
 		"tank":     map[string]any{"name": "AI Prod", "volume_liters": 80},
@@ -500,7 +500,7 @@ func TestDiagnose_MultipleMatches_CO2AndMilkyWater_TopHigherConfidence(t *testin
 	}
 
 	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
-	srv := NewServer(sqlDB, svc)
+	srv := NewServer(sqlDB, svc, nil)
 
 	body, _ := json.Marshal(map[string]any{
 		"tank": map[string]any{"name": "M", "volume_liters": 100},
@@ -574,7 +574,7 @@ func TestDiagnose_UnknownResponse_NoRuleMatch(t *testing.T) {
 	}
 
 	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
-	srv := NewServer(sqlDB, svc)
+	srv := NewServer(sqlDB, svc, nil)
 
 	note := "nur Notiz"
 	body, _ := json.Marshal(map[string]any{
@@ -657,7 +657,7 @@ func TestDiagnose_ValidationFailed_StructuredJSON(t *testing.T) {
 	}
 
 	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
-	srv := NewServer(sqlDB, svc)
+	srv := NewServer(sqlDB, svc, nil)
 
 	body := []byte(`{"water":{"ph":7.0},"symptoms":[]}`)
 
@@ -705,7 +705,7 @@ func TestDiagnose_InvalidJSON_StructuredError(t *testing.T) {
 	}
 
 	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
-	srv := NewServer(sqlDB, svc)
+	srv := NewServer(sqlDB, svc, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/diagnose", bytes.NewReader([]byte(`{"water":`)))
 	req.Header.Set("Content-Type", "application/json")

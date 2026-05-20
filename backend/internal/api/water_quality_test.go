@@ -36,7 +36,7 @@ func setupTanksAndTests(t *testing.T) (http.Handler, int64, []int64) {
 		t.Fatal(err)
 	}
 
-	srv := NewServer(sqlDB, nil)
+	srv := NewServer(sqlDB, nil, nil)
 	h := testMux(t, srv)
 
 	ctx := context.Background()

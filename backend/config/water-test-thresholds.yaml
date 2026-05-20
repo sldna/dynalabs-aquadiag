@@ -1,0 +1,165 @@
+# Warnschwellen für Schnellerfassung / Ampel-Anzeige (nicht Diagnose-Rule-Engine).
+thresholds:
+  nitrite_no2:
+    unit: mg/l
+    ranges:
+      - min: 0
+        max: 0.1
+        status: ok
+        message: Nitrit liegt im unkritischen Bereich.
+      - min: 0.1
+        max: 0.2
+        status: watch
+        message: Nitrit ist leicht messbar – beobachten und Ursache prüfen.
+      - min: 0.2
+        max: 0.5
+        status: watch
+        message: Nitrit ist erhöht – Filter und Fütterung prüfen.
+      - min: 0.5
+        max: null
+        status: critical
+        message: Nitrit ist kritisch erhöht – akut belastend für Fische.
+
+  nitrate_no3:
+    unit: mg/l
+    ranges:
+      - min: 0
+        max: 30
+        status: ok
+        message: Nitrat liegt im üblichen Bereich.
+      - min: 30
+        max: 50
+        status: watch
+        message: Nitrat ist erhöht – regelmäßiger Teilwasserwechsel sinnvoll.
+      - min: 50
+        max: 100
+        status: watch
+        message: Nitrat ist deutlich erhöht – Fütterung und Mulm prüfen.
+      - min: 100
+        max: null
+        status: critical
+        message: Nitrat ist sehr hoch – langfristig belastend.
+
+  ammonium_nh4:
+    unit: mg/l
+    ranges:
+      - min: 0
+        max: 0.1
+        status: ok
+        message: Ammonium liegt im unkritischen Bereich.
+      - min: 0.1
+        max: 0.2
+        status: watch
+        message: Ammonium leicht erhöht – Filter und Fütterung beobachten.
+      - min: 0.2
+        max: 0.5
+        status: watch
+        message: Ammonium erhöht – Belastung für Fische möglich.
+      - min: 0.5
+        max: null
+        status: critical
+        message: Ammonium kritisch erhöht.
+
+  ph:
+    unit: ""
+    ranges:
+      - min: 6.8
+        max: 8.2
+        status: ok
+        message: pH liegt im üblichen Bereich für Süßwasser-Gesellschaftsaquarien.
+      - min: 6.5
+        max: 6.79
+        status: watch
+        message: pH weicht etwas ab – beobachten und erneut messen.
+      - min: 8.21
+        max: 8.5
+        status: watch
+        message: pH weicht etwas ab – beobachten und erneut messen.
+      - min: 6.0
+        max: 6.49
+        status: watch
+        message: pH liegt deutlich außerhalb des Normalbereichs.
+      - min: 8.51
+        max: 9.0
+        status: watch
+        message: pH liegt deutlich außerhalb des Normalbereichs.
+      - min: null
+        max: 5.99
+        status: critical
+        message: pH ist extrem niedrig – Stabilität prüfen.
+      - min: 9.01
+        max: null
+        status: critical
+        message: pH ist extrem hoch – Stabilität prüfen.
+
+  kh:
+    unit: "°dKH"
+    ranges:
+      - min: 5
+        max: 16
+        status: ok
+        message: KH liegt im stabilen Pufferbereich.
+      - min: 3
+        max: 4.99
+        status: watch
+        message: KH ist grenzwertig – pH kann stärker schwanken.
+      - min: 17
+        max: 20
+        status: watch
+        message: KH ist grenzwertig – pH kann stärker schwanken.
+      - min: null
+        max: 2.99
+        status: critical
+        message: KH ist extrem niedrig – Pufferung gefährdet.
+      - min: 21
+        max: null
+        status: critical
+        message: KH ist extrem hoch.
+
+  gh:
+    unit: "°dGH"
+    ranges:
+      - min: 8
+        max: 25
+        status: ok
+        message: GH liegt im üblichen Bereich.
+      - min: 5
+        max: 7.99
+        status: watch
+        message: GH weicht etwas ab – Besatzansprüche prüfen.
+      - min: 25.01
+        max: 30
+        status: watch
+        message: GH weicht etwas ab – Besatzansprüche prüfen.
+      - min: null
+        max: 4.99
+        status: critical
+        message: GH ist extrem niedrig.
+      - min: 31
+        max: null
+        status: critical
+        message: GH ist extrem hoch.
+
+  temperature_c:
+    unit: "°C"
+    ranges:
+      - min: 21
+        max: 28
+        status: ok
+        message: Temperatur liegt im üblichen Bereich.
+      - min: 19
+        max: 20.99
+        status: watch
+        message: Temperatur weicht etwas ab.
+      - min: 28.01
+        max: 30
+        status: watch
+        message: Temperatur weicht etwas ab.
+      - min: null
+        max: 18.99
+        status: critical
+        message: Temperatur ist zu niedrig.
+      - min: 30.01
+        max: null
+        status: critical
+        message: Temperatur ist zu hoch.

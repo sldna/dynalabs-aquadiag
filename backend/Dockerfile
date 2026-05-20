@@ -14,9 +14,11 @@ RUN apk add --no-cache ca-certificates wget
 
 COPY --from=build /api /usr/local/bin/api
 COPY rules /app/rules
+COPY backend/config /app/config
 
 ENV BACKEND_PORT=8080
 ENV RULES_PATH=/app/rules/aquarium-rules.yaml
+ENV WATER_TEST_CONFIG_DIR=/app/config
 
 EXPOSE 8080
 

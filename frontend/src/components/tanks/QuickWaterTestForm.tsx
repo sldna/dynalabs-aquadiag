@@ -3,16 +3,23 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { useWaterTestConfig } from "@/hooks/useWaterTestConfig";
+import { useWaterTestTimers } from "@/hooks/useWaterTestTimers";
 import { browserApiBase } from "@/lib/api-base";
-import { useJblWaterTestTimers } from "@/hooks/useJblWaterTestTimers";
-import type { JblTimerView } from "@/lib/jbl-timer-runtime";
 import {
-  type JblTimerId,
-  type JblWaterTestTimerGroup,
-  jblTimerGroupsForField,
-  jblTimerGroupsWithoutField,
-  jblTimerId,
-} from "@/lib/jbl-water-test-timers";
+  type ThresholdEvaluation,
+  type TimerId,
+  type WaterTestProfile,
+  type WaterTestTimerGroup,
+  evaluateThreshold,
+  thresholdToWaterQualityStatus,
+  timerGroupsForField,
+  timerGroupsWithoutField,
+  waterTestTimerId,
+} from "@/lib/water-test-config";
+import type { TimerView } from "@/lib/water-test-timer-runtime";
+import { requestNotificationPermission } from "@/lib/water-test-timer-runtime";
+import { waterQualityLabelDE } from "@/lib/water-quality";
 
 type QuickWaterTestFormProps = {
   tankId: number;
@@ -39,45 +46,61 @@ function mmss(totalSeconds: number): string {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps) {
-  const [temperatureC, setTemperatureC] = useState("");
-  const [ph, setPh] = useState("");
-  const [kh, setKh] = useState("");
-  const [gh, setGh] = useState("");
-  const [nitriteNo2, setNitriteNo2] = useState("");
-  const [nitrateNo3, setNitrateNo3] = useState("");
-  const [ammoniumNh4, setAmmoniumNh4] = useState("");
-  const [phosphatePo4, setPhosphatePo4] = useState("");
-  const [ironFe, setIronFe] = useState("");
-  const [notes, setNotes] = useState("");
+function notificationHint(): string | null {
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return "Browser-Benachrichtigungen sind nicht verfügbar. Timer warnen nur innerhalb der geöffneten App.";
+  }
+  if (Notification.permission === "denied") {
+    return "Benachrichtigungen sind blockiert. Timer warnen nur innerhalb der geöffneten App (Ton und Anzeige).";
+  }
+  if (Notification.permission === "default") {
+    return "Optional: Erlaube Browser-Benachrichtigungen für Timer-Hinweise auch im Hintergrund.";
+  }
+  return null;
+}
 
-  const { views, startTimer, pauseTimer, resetTimer } = useJblWaterTestTimers(tankId);
+export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps) {
+  const configState = useWaterTestConfig();
+  const timerGroups = configState.status === "ready" ? configState.timerGroups : null;
+  const { views, startTimer, pauseTimer, resetTimer } = useWaterTestTimers(tankId, timerGroups);
+
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedTestId, setSavedTestId] = useState<number | null>(null);
+  const [notifHintDismissed, setNotifHintDismissed] = useState(false);
 
-  const standaloneTimerGroups = useMemo(() => jblTimerGroupsWithoutField(), []);
+  const config = configState.status === "ready" ? configState.config : null;
 
-  const validation = useMemo(
-    () => ({
-      temperatureC: parseNonNegativeNumber(temperatureC),
-      ph: parseNonNegativeNumber(ph),
-      kh: parseNonNegativeNumber(kh),
-      gh: parseNonNegativeNumber(gh),
-      nitriteNo2: parseNonNegativeNumber(nitriteNo2),
-      nitrateNo3: parseNonNegativeNumber(nitrateNo3),
-      ammoniumNh4: parseNonNegativeNumber(ammoniumNh4),
-      phosphatePo4: parseNonNegativeNumber(phosphatePo4),
-      ironFe: parseNonNegativeNumber(ironFe),
-    }),
-    [temperatureC, ph, kh, gh, nitriteNo2, nitrateNo3, ammoniumNh4, phosphatePo4, ironFe],
-  );
+  const validation = useMemo(() => {
+    if (!config) return {};
+    const out: Record<string, ParsedNumber> = {};
+    for (const test of config.tests) {
+      if (test.input_type === "select") continue;
+      out[test.key] = parseNonNegativeNumber(values[test.key] ?? "");
+    }
+    return out;
+  }, [config, values]);
 
   const hasValidationErrors = Object.values(validation).some((v) => Boolean(v.error));
+
+  const standaloneTimerGroups = useMemo(
+    () => (timerGroups ? timerGroupsWithoutField(timerGroups) : []),
+    [timerGroups],
+  );
+
+  const notifHint = useMemo(() => notificationHint(), []);
+
+  function setValue(key: string, v: string) {
+    setValues((prev) => ({ ...prev, [key]: v }));
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (!config) return;
 
     if (hasValidationErrors) {
       setError("Bitte korrigiere die markierten Eingaben.");
@@ -85,15 +108,14 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
     }
 
     const payload: Record<string, number | string> = {};
-    if (validation.temperatureC.value !== undefined) payload.temperature_c = validation.temperatureC.value;
-    if (validation.ph.value !== undefined) payload.ph = validation.ph.value;
-    if (validation.kh.value !== undefined) payload.kh = validation.kh.value;
-    if (validation.gh.value !== undefined) payload.gh = validation.gh.value;
-    if (validation.nitriteNo2.value !== undefined) payload.nitrite_no2 = validation.nitriteNo2.value;
-    if (validation.nitrateNo3.value !== undefined) payload.nitrate_no3 = validation.nitrateNo3.value;
-    if (validation.ammoniumNh4.value !== undefined) payload.ammonium_nh4 = validation.ammoniumNh4.value;
-    if (validation.phosphatePo4.value !== undefined) payload.phosphate_po4 = validation.phosphatePo4.value;
-    if (validation.ironFe.value !== undefined) payload.iron_fe = validation.ironFe.value;
+    for (const test of config.tests) {
+      const raw = values[test.key]?.trim();
+      if (!raw) continue;
+      const parsed = parseNonNegativeNumber(raw);
+      if (parsed.value !== undefined) {
+        payload[test.key] = parsed.value;
+      }
+    }
     const trimmedNotes = notes.trim();
     if (trimmedNotes) payload.notes = trimmedNotes;
 
@@ -125,6 +147,33 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
     } finally {
       setBusy(false);
     }
+  }
+
+  if (configState.status === "loading") {
+    return (
+      <section className="rounded-card border border-aqua-deep/10 bg-white p-6 shadow-card">
+        <p className="text-sm text-aqua-deep/75">Wassertest-Konfiguration wird geladen…</p>
+      </section>
+    );
+  }
+
+  if (configState.status === "error") {
+    return (
+      <section className="rounded-card border border-status-critical/30 bg-status-critical/5 p-6 shadow-card">
+        <p role="alert" className="text-sm font-medium text-status-critical">
+          {configState.message}
+        </p>
+        <p className="mt-2 text-xs text-aqua-deep/70">Bitte Backend-Verbindung prüfen und die Seite neu laden.</p>
+      </section>
+    );
+  }
+
+  if (configState.status === "empty" || !config) {
+    return (
+      <section className="rounded-card border border-aqua-deep/10 bg-white p-6 shadow-card">
+        <p className="text-sm text-aqua-deep/75">Keine Wassertest-Konfiguration verfügbar.</p>
+      </section>
+    );
   }
 
   if (savedTestId !== null) {
@@ -166,79 +215,57 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
         <p className="text-sm text-aqua-deep/75">Du kannst Werte einzeln erfassen – eine Diagnose ist nicht erforderlich.</p>
       </section>
 
-      <form id="quick-water-test-form" onSubmit={onSubmit} className="space-y-4 rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card sm:p-5">
-        <FieldCard
-          label="Temperatur"
-          unit="°C"
-          value={temperatureC}
-          onChange={setTemperatureC}
-          error={validation.temperatureC.error}
-          placeholder="z. B. 24.8"
-        />
-        <FieldCard label="pH" unit="" value={ph} onChange={setPh} error={validation.ph.error} placeholder="z. B. 7.1" />
-        <FieldCard label="KH" unit="°dKH" value={kh} onChange={setKh} error={validation.kh.error} />
-        <FieldCard label="GH" unit="°dGH" value={gh} onChange={setGh} error={validation.gh.error} />
-        <FieldCard
-          label="Nitrit (NO₂)"
-          unit="mg/l"
-          value={nitriteNo2}
-          onChange={setNitriteNo2}
-          error={validation.nitriteNo2.error}
-          fieldKey="nitrite_no2"
-          views={views}
-          onStartTimer={startTimer}
-          onPauseTimer={pauseTimer}
-          onResetTimer={resetTimer}
-        />
-        <FieldCard
-          label="Nitrat (NO₃)"
-          unit="mg/l"
-          value={nitrateNo3}
-          onChange={setNitrateNo3}
-          error={validation.nitrateNo3.error}
-        />
-        <FieldCard
-          label="Ammonium (NH₄)"
-          unit="mg/l"
-          value={ammoniumNh4}
-          onChange={setAmmoniumNh4}
-          error={validation.ammoniumNh4.error}
-          fieldKey="ammonium_nh4"
-          views={views}
-          onStartTimer={startTimer}
-          onPauseTimer={pauseTimer}
-          onResetTimer={resetTimer}
-        />
-        <FieldCard
-          label="Phosphat (PO₄)"
-          unit="mg/l"
-          value={phosphatePo4}
-          onChange={setPhosphatePo4}
-          error={validation.phosphatePo4.error}
-        />
-        <FieldCard
-          label="Eisen (Fe)"
-          unit="mg/l"
-          value={ironFe}
-          onChange={setIronFe}
-          error={validation.ironFe.error}
-          fieldKey="iron_fe"
-          views={views}
-          onStartTimer={startTimer}
-          onPauseTimer={pauseTimer}
-          onResetTimer={resetTimer}
-        />
+      {notifHint && !notifHintDismissed ? (
+        <section className="rounded-card border border-aqua-blue/20 bg-aqua-soft/50 p-4">
+          <p className="text-xs text-aqua-deep/80">{notifHint}</p>
+          {typeof window !== "undefined" && "Notification" in window && Notification.permission === "default" ? (
+            <button
+              type="button"
+              onClick={() => requestNotificationPermission()}
+              className="mt-2 min-h-[36px] rounded-button border border-aqua-blue bg-white px-3 py-1.5 text-xs font-semibold text-aqua-deep hover:bg-aqua-soft"
+            >
+              Benachrichtigungen erlauben
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setNotifHintDismissed(true)}
+            className="mt-2 block text-xs text-aqua-deep/60 underline"
+          >
+            Hinweis ausblenden
+          </button>
+        </section>
+      ) : null}
 
-        <JblTimerGroupsSection
-          title="Weitere JBL-Wassertest-Timer"
-          description="Timer für Tests ohne eigenes Eingabefeld – parallel zu den Messwert-Timern nutzbar."
-          standbyHint={STANDBY_HINT}
-          groups={standaloneTimerGroups}
-          views={views}
-          onStartTimer={startTimer}
-          onPauseTimer={pauseTimer}
-          onResetTimer={resetTimer}
-        />
+      <form id="quick-water-test-form" onSubmit={onSubmit} className="space-y-4 rounded-card border border-aqua-deep/10 bg-white p-4 shadow-card sm:p-5">
+        {config.tests.map((test) => (
+          <TestFieldCard
+            key={test.key}
+            test={test}
+            value={values[test.key] ?? ""}
+            onChange={(v) => setValue(test.key, v)}
+            error={test.input_type === "select" ? undefined : validation[test.key]?.error}
+            thresholds={config.thresholds}
+            timerGroups={timerGroups ?? []}
+            views={views}
+            onStartTimer={startTimer}
+            onPauseTimer={pauseTimer}
+            onResetTimer={resetTimer}
+          />
+        ))}
+
+        {standaloneTimerGroups.length > 0 ? (
+          <TimerGroupsSection
+            title="Weitere JBL-Wassertest-Timer"
+            description="Timer für Tests ohne eigenes Eingabefeld – parallel zu den Messwert-Timern nutzbar."
+            standbyHint={STANDBY_HINT}
+            groups={standaloneTimerGroups}
+            views={views}
+            onStartTimer={startTimer}
+            onPauseTimer={pauseTimer}
+            onResetTimer={resetTimer}
+          />
+        ) : null}
 
         <section className="rounded-card border border-aqua-deep/10 bg-white p-4">
           <label className="block text-sm font-semibold text-aqua-deep">
@@ -285,68 +312,109 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
 }
 
 type TimerHandlers = {
-  views: Record<JblTimerId, JblTimerView>;
-  onStartTimer: (timerId: JblTimerId) => void;
-  onPauseTimer: (timerId: JblTimerId) => void;
-  onResetTimer: (timerId: JblTimerId) => void;
+  views: Record<TimerId, TimerView>;
+  onStartTimer: (timerId: TimerId) => void;
+  onPauseTimer: (timerId: TimerId) => void;
+  onResetTimer: (timerId: TimerId) => void;
 };
 
-type FieldCardProps = {
-  label: string;
-  unit: string;
+type TestFieldCardProps = TimerHandlers & {
+  test: WaterTestProfile;
   value: string;
   onChange: (value: string) => void;
   error?: string;
-  placeholder?: string;
-  fieldKey?: string;
-} & Partial<TimerHandlers>;
+  thresholds: Record<string, import("@/lib/water-test-config").WaterTestThreshold>;
+  timerGroups: WaterTestTimerGroup[];
+};
 
-function FieldCard({
-  label,
-  unit,
+function TestFieldCard({
+  test,
   value,
   onChange,
   error,
-  placeholder,
-  fieldKey,
+  thresholds,
+  timerGroups,
   views,
   onStartTimer,
   onPauseTimer,
   onResetTimer,
-}: FieldCardProps) {
-  const timerGroups = fieldKey ? jblTimerGroupsForField(fieldKey) : [];
+}: TestFieldCardProps) {
+  const numericValue = value.trim() ? parseNonNegativeNumber(value).value : undefined;
+  const threshold: ThresholdEvaluation | null =
+    numericValue !== undefined ? evaluateThreshold(thresholds, test.key, numericValue) : null;
+  const wqStatus = threshold ? thresholdToWaterQualityStatus(threshold.status) : null;
+
+  const linkedTimers = timerGroupsForField(timerGroups, test.key);
+  const inputId = `water-test-${test.key}`;
 
   return (
     <section className="rounded-card border border-aqua-deep/10 bg-white p-4">
-      <label className="block text-sm font-semibold text-aqua-deep">
-        {label}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <label htmlFor={test.input_type === "select" ? undefined : inputId} className="block text-sm font-semibold text-aqua-deep">
+          {test.label}
+          {test.brand ? (
+            <span className="ml-2 text-xs font-normal text-aqua-deep/55">{test.brand}</span>
+          ) : null}
+        </label>
+        {wqStatus && wqStatus !== "unknown" && threshold ? (
+          <ThresholdBadge status={wqStatus} message={threshold.message} />
+        ) : null}
+      </div>
+
+      {test.input_type === "select" && test.values.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {test.values.map((opt) => {
+            const selected = value === String(opt.value) || value === opt.label;
+            return (
+              <button
+                key={`${test.key}-${opt.value}`}
+                type="button"
+                onClick={() => onChange(String(opt.value))}
+                className={`min-h-[44px] rounded-lg border px-3 py-2 text-sm font-medium ${
+                  selected
+                    ? "border-aqua-blue bg-aqua-blue text-white"
+                    : "border-aqua-deep/20 bg-aqua-soft text-aqua-deep hover:border-aqua-blue/50"
+                }`}
+              >
+                {opt.label}
+                {test.unit ? ` ${test.unit}` : ""}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
         <div className="mt-2 flex items-center gap-2">
           <input
+            id={inputId}
             inputMode="decimal"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
             className={`min-h-[48px] w-full rounded-lg border px-3 py-2.5 text-base text-aqua-deep ${
               error ? "border-status-critical" : "border-aqua-deep/20"
             }`}
           />
-          {unit ? (
-            <span className="inline-flex min-h-[48px] items-center rounded-lg border border-aqua-deep/10 bg-aqua-soft px-3 text-sm font-medium text-aqua-deep/80">
-              {unit}
+          {test.unit ? (
+            <span className="inline-flex min-h-[48px] shrink-0 items-center rounded-lg border border-aqua-deep/10 bg-aqua-soft px-3 text-sm font-medium text-aqua-deep/80">
+              {test.unit}
             </span>
           ) : null}
         </div>
-      </label>
+      )}
+
       {error ? (
         <p role="alert" className="mt-1 text-xs text-status-critical">
           {error}
         </p>
       ) : null}
 
-      {views && onStartTimer && onPauseTimer && onResetTimer && timerGroups.length > 0 ? (
+      {threshold?.message && wqStatus && wqStatus !== "unknown" ? (
+        <p className="mt-2 text-xs text-aqua-deep/75">{threshold.message}</p>
+      ) : null}
+
+      {views && linkedTimers.length > 0 ? (
         <div className="mt-3 space-y-2">
-          {timerGroups.map((group) => (
-            <JblTimerGroupPanel
+          {linkedTimers.map((group) => (
+            <TimerGroupPanel
               key={group.groupId}
               group={group}
               views={views}
@@ -361,14 +429,35 @@ function FieldCard({
   );
 }
 
-type JblTimerGroupsSectionProps = TimerHandlers & {
+function ThresholdBadge({ status, message }: { status: string; message?: string }) {
+  const label = waterQualityLabelDE(status);
+  const color =
+    status === "green"
+      ? "bg-status-success/15 text-status-success ring-status-success/30"
+      : status === "observe" || status === "warning"
+        ? "bg-status-warning/15 text-aqua-deep ring-status-warning/40"
+        : status === "critical"
+          ? "bg-status-critical/15 text-status-critical ring-status-critical/30"
+          : "bg-aqua-soft text-aqua-deep/70 ring-aqua-deep/10";
+
+  return (
+    <span
+      title={message}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${color}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+type TimerGroupsSectionProps = TimerHandlers & {
   title: string;
   description?: string;
   standbyHint?: string;
-  groups: JblWaterTestTimerGroup[];
+  groups: WaterTestTimerGroup[];
 };
 
-function JblTimerGroupsSection({
+function TimerGroupsSection({
   title,
   description,
   standbyHint,
@@ -377,7 +466,7 @@ function JblTimerGroupsSection({
   onStartTimer,
   onPauseTimer,
   onResetTimer,
-}: JblTimerGroupsSectionProps) {
+}: TimerGroupsSectionProps) {
   if (groups.length === 0) return null;
 
   return (
@@ -391,7 +480,7 @@ function JblTimerGroupsSection({
       ) : null}
       <div className="mt-3 space-y-3">
         {groups.map((group) => (
-          <JblTimerGroupPanel
+          <TimerGroupPanel
             key={group.groupId}
             group={group}
             views={views}
@@ -405,21 +494,21 @@ function JblTimerGroupsSection({
   );
 }
 
-type JblTimerGroupPanelProps = TimerHandlers & {
-  group: JblWaterTestTimerGroup;
+type TimerGroupPanelProps = TimerHandlers & {
+  group: WaterTestTimerGroup;
 };
 
-function JblTimerGroupPanel({
+function TimerGroupPanel({
   group,
   views,
   onStartTimer,
   onPauseTimer,
   onResetTimer,
-}: JblTimerGroupPanelProps) {
+}: TimerGroupPanelProps) {
   return (
     <div className="space-y-2">
       {group.steps.map((step) => {
-        const timerId = jblTimerId(group.groupId, step.stepId);
+        const timerId = waterTestTimerId(group.groupId, step.stepId);
         const view = views[timerId];
         if (!view) return null;
 
@@ -429,7 +518,7 @@ function JblTimerGroupPanel({
             : `JBL Timer ${group.displayName}`;
 
         return (
-          <JblTimerPanel
+          <TimerPanel
             key={timerId}
             heading={heading}
             view={view}
@@ -442,14 +531,14 @@ function JblTimerGroupPanel({
   );
 }
 
-type JblTimerPanelProps = {
+type TimerPanelProps = {
   heading: string;
-  view: JblTimerView;
+  view: TimerView;
   onStart: () => void;
   onReset: () => void;
 };
 
-function JblTimerPanel({ heading, view, onStart, onReset }: JblTimerPanelProps) {
+function TimerPanel({ heading, view, onStart, onReset }: TimerPanelProps) {
   const expired = view.isExpired;
 
   return (

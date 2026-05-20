@@ -1,0 +1,122 @@
+# JBL-orientierte Wassertest-Profile für Schnellerfassung (nicht Diagnose-Rule-Engine).
+tests:
+  - key: temperature_c
+    label: Temperatur
+    brand: ""
+    unit: "°C"
+    input_type: number
+    values: []
+
+  - key: ph
+    label: pH
+    brand: JBL
+    unit: ""
+    input_type: number
+    values: []
+
+  - key: kh
+    label: KH
+    brand: JBL
+    unit: "°dKH"
+    input_type: number
+    values: []
+
+  - key: gh
+    label: GH
+    brand: JBL
+    unit: "°dGH"
+    input_type: number
+    values: []
+
+  - key: nitrite_no2
+    label: Nitrit (NO₂)
+    brand: JBL
+    unit: mg/l
+    input_type: select
+    values:
+      - value: 0
+        label: "0"
+      - value: 0.05
+        label: "0,05"
+      - value: 0.1
+        label: "0,1"
+      - value: 0.2
+        label: "0,2"
+      - value: 0.3
+        label: "0,3"
+      - value: 0.5
+        label: "0,5"
+      - value: 0.8
+        label: "0,8"
+      - value: 1.0
+        label: "1,0"
+
+  - key: nitrate_no3
+    label: Nitrat (NO₃)
+    brand: JBL
+    unit: mg/l
+    input_type: select
+    values:
+      - value: 0
+        label: "0"
+      - value: 0.5
+        label: "0,5"
+      - value: 1
+        label: "1"
+      - value: 5
+        label: "5"
+      - value: 10
+        label: "10"
+      - value: 15
+        label: "15"
+      - value: 25
+        label: "25"
+      - value: 50
+        label: "50"
+      - value: 100
+        label: "100"
+
+  - key: ammonium_nh4
+    label: Ammonium (NH₄)
+    brand: JBL
+    unit: mg/l
+    input_type: select
+    values:
+      - value: 0
+        label: "0"
+      - value: 0.05
+        label: "0,05"
+      - value: 0.1
+        label: "0,1"
+      - value: 0.2
+        label: "0,2"
+      - value: 0.5
+        label: "0,5"
+      - value: 1.0
+        label: "1,0"
+
+  - key: phosphate_po4
+    label: Phosphat (PO₄)
+    brand: JBL
+    unit: mg/l
+    input_type: number
+    values: []
+
+  - key: iron_fe
+    label: Eisen (Fe)
+    brand: JBL
+    unit: mg/l
+    input_type: select
+    values:
+      - value: 0
+        label: "0"
+      - value: 0.05
+        label: "0,05"
+      - value: 0.1
+        label: "0,1"
+      - value: 0.2
+        label: "0,2"
+      - value: 0.5
+        label: "0,5"
+      - value: 1.0
+        label: "1,0"

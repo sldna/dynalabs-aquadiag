@@ -9,6 +9,7 @@ import (
 
 	"aquadiag/backend/internal/ai"
 	"aquadiag/backend/internal/api"
+	"aquadiag/backend/internal/config"
 	"aquadiag/backend/internal/db"
 	"aquadiag/backend/internal/diagnosis"
 	"aquadiag/backend/internal/rules"
@@ -54,6 +55,23 @@ func main() {
 		"rules_evaluated", rs.EvaluatedCount(),
 	)
 
+	configDir, err := config.ResolveConfigDir()
+	if err != nil {
+		slog.Error("water_test_config_dir_resolve_failed", "error", err.Error())
+		os.Exit(1)
+	}
+	waterTestCfg, err := config.LoadWaterTestConfig(configDir)
+	if err != nil {
+		slog.Error("water_test_config_load_failed", "dir", configDir, "error", err.Error())
+		os.Exit(1)
+	}
+	slog.Info("water_test_config_loaded",
+		"dir", configDir,
+		"tests", len(waterTestCfg.Tests),
+		"thresholds", len(waterTestCfg.Thresholds),
+		"timers", len(waterTestCfg.Timers),
+	)
+
 	aiSvc := ai.NewServiceFromEnv()
 	slog.Info("ai_config",
 		"enabled", aiSvc != nil && aiSvc.Enabled(),
@@ -62,7 +80,7 @@ func main() {
 		"timeout_seconds", aiSvc.TimeoutSeconds(),
 	)
 	svc := diagnosis.NewService(sqlDB, rs, aiSvc)
-	srv := api.NewServer(sqlDB, svc)
+	srv := api.NewServer(sqlDB, svc, waterTestCfg)
 
 	mux := http.NewServeMux()
 	api.RegisterRoutes(mux, srv)

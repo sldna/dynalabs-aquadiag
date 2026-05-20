@@ -37,7 +37,7 @@ func TestPatchDiagnosisFollowUps_OK(t *testing.T) {
 	}
 
 	svc := diagnosis.NewService(sqlDB, rs, ai.NewServiceFromEnv())
-	srv := NewServer(sqlDB, svc)
+	srv := NewServer(sqlDB, svc, nil)
 
 	body, _ := json.Marshal(map[string]any{
 		"tank":     map[string]any{"name": "FUP", "volume_liters": 120},

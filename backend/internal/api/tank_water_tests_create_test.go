@@ -29,7 +29,7 @@ func setupQuickWaterTests(t *testing.T) (*sql.DB, http.Handler) {
 		t.Fatal(err)
 	}
 
-	srv := NewServer(sqlDB, nil)
+	srv := NewServer(sqlDB, nil, nil)
 	return sqlDB, testMux(t, srv)
 }
 

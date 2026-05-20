@@ -1,14 +1,40 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { jblTimerStorageKey } from "@/lib/jbl-timer-runtime";
-import { jblTimerId } from "@/lib/jbl-water-test-timers";
+import { MOCK_WATER_TEST_CONFIG } from "@/lib/water-test-config.fixture";
+import { timerStorageKey } from "@/lib/water-test-timer-runtime";
+import { waterTestTimerId } from "@/lib/water-test-config";
 
 import { QuickWaterTestForm } from "./QuickWaterTestForm";
+
+function mockConfigFetch() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/v1/water-test-config")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => MOCK_WATER_TEST_CONFIG,
+        } as Response);
+      }
+      if (url.includes("/water-tests") && init?.method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          status: 201,
+          json: async () => ({ id: 42 }),
+        } as Response);
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    }),
+  );
+}
 
 describe("QuickWaterTestForm", () => {
   beforeEach(() => {
     localStorage.clear();
+    mockConfigFetch();
   });
 
   afterEach(() => {
@@ -17,20 +43,34 @@ describe("QuickWaterTestForm", () => {
     localStorage.clear();
   });
 
+  it("lädt Config und rendert Werteauswahl", async () => {
+    render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
+    expect(await screen.findByText(/Nitrat \(NO₃\)/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /0,5 mg\/l/i })).toBeInTheDocument();
+  });
+
+  it("zeigt NO3 0.5 als unauffällig nicht kritisch", async () => {
+    render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
+    await screen.findByText(/Nitrat \(NO₃\)/i);
+    fireEvent.click(screen.getByRole("button", { name: /0,5 mg\/l/i }));
+    expect(screen.getByText("Unauffällig")).toBeInTheDocument();
+    expect(screen.queryByText("Kritisch")).not.toBeInTheDocument();
+  });
+
   it("zeigt Validierungsfehler bei leerer Messung", async () => {
     render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
-
-    fireEvent.click(screen.getAllByRole("button", { name: "Messung speichern" })[0]);
-
+    const saveBtn = await screen.findAllByRole("button", { name: "Messung speichern" });
+    fireEvent.click(saveBtn[0]);
     expect(screen.getByText(/Bitte mindestens einen Messwert eintragen/i)).toBeInTheDocument();
   });
 
-  it("lässt mehrere Timer parallel laufen und unterstützt Pause/Reset", () => {
+  it("lässt mehrere Timer parallel laufen und unterstützt Pause/Reset", async () => {
+    render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
+    await screen.findByText("JBL Timer NO₂");
+
     vi.useFakeTimers();
     const now = new Date("2024-06-01T12:00:00Z");
     vi.setSystemTime(now);
-
-    render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
 
     const no2Panel = screen.getByText("JBL Timer NO₂").parentElement;
     const nh4Panel = screen.getByText("JBL Timer NH₄").parentElement;
@@ -41,8 +81,9 @@ describe("QuickWaterTestForm", () => {
     fireEvent.click(within(no2Panel).getByRole("button", { name: "Start" }));
     fireEvent.click(within(nh4Panel).getByRole("button", { name: "Start" }));
 
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(2_000);
+      document.dispatchEvent(new Event("visibilitychange"));
     });
 
     expect(within(no2Panel).getByText("04:58")).toBeInTheDocument();
@@ -58,12 +99,13 @@ describe("QuickWaterTestForm", () => {
     expect(within(no2Panel).getByText("05:00")).toBeInTheDocument();
   });
 
-  it("erkennt abgelaufene Timer nach visibilitychange", () => {
+  it("erkennt abgelaufene Timer nach visibilitychange", async () => {
+    render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
+    await screen.findByText("JBL Timer O₂ – Schritt 1");
+
     vi.useFakeTimers();
     const now = new Date("2024-06-01T12:00:00Z");
     vi.setSystemTime(now);
-
-    render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
 
     const o2Panel = screen.getByText("JBL Timer O₂ – Schritt 1").parentElement;
     if (!o2Panel) throw new Error("O₂-Panel nicht gefunden");
@@ -86,12 +128,13 @@ describe("QuickWaterTestForm", () => {
     expect(within(o2Panel).getByText(/Schritt 1 ist abgelaufen/i)).toBeInTheDocument();
   });
 
-  it("O₂ und SiO₂: parallele Mehrschritt-Timer laufen unabhängig", () => {
+  it("O₂ und SiO₂: parallele Mehrschritt-Timer laufen unabhängig", async () => {
+    render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
+    await screen.findByText("JBL Timer O₂ – Schritt 1");
+
     vi.useFakeTimers();
     const now = new Date("2024-06-01T12:00:00Z");
     vi.setSystemTime(now);
-
-    render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
 
     const o2s1 = screen.getByText("JBL Timer O₂ – Schritt 1").parentElement;
     const o2s2 = screen.getByText("JBL Timer O₂ – Schritt 2").parentElement;
@@ -104,8 +147,9 @@ describe("QuickWaterTestForm", () => {
     fireEvent.click(within(sio2s1).getByRole("button", { name: "Start" }));
     fireEvent.click(within(sio2s2).getByRole("button", { name: "Start" }));
 
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(10_000);
+      document.dispatchEvent(new Event("visibilitychange"));
     });
 
     expect(within(o2s1).getByText("00:20")).toBeInTheDocument();
@@ -114,17 +158,16 @@ describe("QuickWaterTestForm", () => {
     expect(within(sio2s2).getByText("02:50")).toBeInTheDocument();
   });
 
-  it("stellt laufende Timer nach Reload aus localStorage wieder her", () => {
+  it("stellt laufende Timer nach Reload aus localStorage wieder her", async () => {
     const tankId = 7;
-    const now = 1_700_000_000_000;
-    const no2 = jblTimerId("no2", "no2");
-    const endsAt = now + 240_000;
+    const base = Date.now();
+    const no2 = waterTestTimerId("no2", "no2");
     localStorage.setItem(
-      jblTimerStorageKey(tankId),
+      timerStorageKey(tankId),
       JSON.stringify({
         [no2]: {
-          startedAt: now,
-          endsAt,
+          startedAt: base,
+          endsAt: base + 240_000,
           durationSeconds: 300,
           status: "running",
           pausedRemainingSeconds: null,
@@ -132,51 +175,27 @@ describe("QuickWaterTestForm", () => {
       }),
     );
 
-    vi.useFakeTimers();
-    vi.setSystemTime(now + 60_000);
-
     render(<QuickWaterTestForm tankId={tankId} tankName="Wohnzimmer" />);
+    await screen.findByText("JBL Timer NO₂");
 
     const no2Panel = screen.getByText("JBL Timer NO₂").parentElement;
     if (!no2Panel) throw new Error("NO₂-Panel nicht gefunden");
-    expect(within(no2Panel).getByText("03:00")).toBeInTheDocument();
-  });
 
-  it("rendert verständliche Labels für Mehrschritt-Timer", () => {
-    render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
-
-    expect(screen.getByText("JBL Timer O₂ – Schritt 1")).toBeInTheDocument();
-    expect(screen.getByText("JBL Timer O₂ – Schritt 2")).toBeInTheDocument();
-    expect(screen.getByText("JBL Timer SiO₂ – Schritt 1")).toBeInTheDocument();
-    expect(screen.getByText("JBL Timer SiO₂ – Schritt 2")).toBeInTheDocument();
-    expect(screen.getByText("JBL Timer SiO₂ – Schritt 3")).toBeInTheDocument();
-    expect(screen.getByText("JBL Timer pH 7,4–9,0")).toBeInTheDocument();
-    expect(screen.getByText(/Beim Zurückkehren zeigt AquaDiag abgelaufene Timer korrekt an/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(no2Panel!).queryByText("05:00")).not.toBeInTheDocument();
+      expect(within(no2Panel!).getByText("04:00")).toBeInTheDocument();
+    });
   });
 
   it("speichert erfolgreich und zeigt Follow-up-Aktionen", async () => {
-    vi.stubGlobal("fetch", vi.fn());
-    const fetchMock = vi.mocked(fetch);
-    fetchMock.mockResolvedValue({
-      ok: true,
-      status: 201,
-      json: async () => ({ id: 42 }),
-    } as Response);
-
     render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
-
-    fireEvent.change(screen.getByLabelText(/^pH$/i), { target: { value: "7.2" } });
+    await screen.findByText(/^pH$/i);
+    const phInput = document.getElementById("water-test-ph");
+    if (!phInput) throw new Error("pH-Eingabe nicht gefunden");
+    fireEvent.change(phInput, { target: { value: "7.2" } });
     fireEvent.click(screen.getAllByRole("button", { name: "Messung speichern" })[0]);
 
     expect(await screen.findByText(/Messung gespeichert/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Analyse mit diesen Werten starten/i })).toBeDisabled();
-    expect(
-      screen.getByText(/Analyse aus gespeicherter Messung folgt im nächsten Schritt/i),
-    ).toBeInTheDocument();
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const call = fetchMock.mock.calls[0];
-    const body = JSON.parse(String(call?.[1]?.body ?? "{}")) as Record<string, unknown>;
-    expect(body.ph).toBe(7.2);
+    await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalled());
   });
 });

@@ -16,6 +16,7 @@ Basis-URL lokal: `http://localhost:8080`
 - [Health](#health)
 - [Tanks](#tanks)
 - [Water Tests](#water-tests)
+- [Water Test Config](#water-test-config)
 - [Diagnosis](#diagnosis)
 - [Strukturierte Fehler](#strukturierte-fehler)
 - [Severity-Werte](#severity-werte)
@@ -172,6 +173,62 @@ Validierung:
 Antwort `201` enthält den gespeicherten `water_test` (inkl. `id`, `tank_id`,
 `created_at`, Ampel-Felder). `diagnosis_result_id` bleibt leer, bis eine
 Analyse explizit gestartet wird.
+
+### `GET /v1/water-test-config`
+
+Liefert die YAML-basierte Konfiguration für Schnellerfassung, UI-Ampel und Timer.
+Wird beim Öffnen von `/tanks/{id}/water-tests/new` geladen.
+
+Antwort `200`:
+
+```json
+{
+  "tests": [
+    {
+      "key": "nitrate_no3",
+      "label": "Nitrat (NO₃)",
+      "brand": "JBL",
+      "unit": "mg/l",
+      "input_type": "select",
+      "values": [{ "value": 0.5, "label": "0,5" }]
+    }
+  ],
+  "thresholds": {
+    "nitrate_no3": {
+      "unit": "mg/l",
+      "ranges": [
+        {
+          "min": 0,
+          "max": 30,
+          "status": "ok",
+          "message": "Nitrat liegt im üblichen Bereich."
+        }
+      ]
+    }
+  },
+  "timers": {
+    "no2": {
+      "test_key": "no2",
+      "label": "NO₂",
+      "field_key": "nitrite_no2",
+      "steps": [
+        { "step_id": "no2", "label": "Einwirkzeit", "duration_seconds": 300 }
+      ]
+    }
+  }
+}
+```
+
+Konfigurationsdateien (Repo): `backend/config/water-tests.yaml`,
+`water-test-thresholds.yaml`, `water-test-timers.yaml`.
+
+Umgebungsvariable: `WATER_TEST_CONFIG_DIR` (optional, Default `./config` bzw.
+`/app/config` im Docker-Image).
+
+**Wichtig:** Die Config ersetzt **nicht** die Diagnose-Rule-Engine. Gespeicherte
+Wassertests erhalten weiterhin `water_quality_*` aus `internal/waterquality`
+(beim Lesen). Die Config-Schwellen dienen primär der Schnellerfassungs-UI und
+einer separaten Threshold-Auswertung (`internal/config.EvaluateThreshold`).
 
 ### `GET /v1/water-tests/{id}`
 
