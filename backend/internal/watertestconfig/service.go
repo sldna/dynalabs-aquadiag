@@ -216,7 +216,7 @@ func (s *Service) upsertDefinition(ctx context.Context, tx *sql.Tx, test TestCon
 	if test.InputType == "" {
 		test.InputType = "select"
 	}
-	res, err := tx.ExecContext(ctx, `
+	_, err := tx.ExecContext(ctx, `
 INSERT INTO water_test_definitions (test_key, label, brand, unit, input_type, sort_order, is_active)
 VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(test_key) DO UPDATE SET
@@ -229,9 +229,6 @@ ON CONFLICT(test_key) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP`, strings.TrimSpace(test.Key), strings.TrimSpace(test.Label), test.Brand, test.Unit, test.InputType, test.SortOrder, test.IsActive)
 	if err != nil {
 		return 0, err
-	}
-	if id, err := res.LastInsertId(); err == nil && id > 0 {
-		return id, nil
 	}
 	var id int64
 	err = tx.QueryRowContext(ctx, `SELECT id FROM water_test_definitions WHERE test_key = ?`, strings.TrimSpace(test.Key)).Scan(&id)
