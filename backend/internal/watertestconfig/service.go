@@ -53,7 +53,7 @@ func (s *Service) CreateDraftFromVersion(ctx context.Context, sourceVersionID in
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	name := strings.TrimSpace(source.Name) + " Entwurf"
+	name := draftNameFrom(source.Name)
 	res, err := tx.ExecContext(ctx, `
 INSERT INTO water_test_config_versions (name, description, is_active, is_draft, created_by)
 VALUES (?, ?, 0, 1, ?)`, name, source.Description, source.CreatedBy)
@@ -71,6 +71,17 @@ VALUES (?, ?, 0, 1, ?)`, name, source.Description, source.CreatedBy)
 		return ConfigVersionDetail{}, err
 	}
 	return s.GetConfigVersion(ctx, newID)
+}
+
+func draftNameFrom(source string) string {
+	name := strings.TrimSpace(source)
+	for strings.HasSuffix(name, " Entwurf") {
+		name = strings.TrimSpace(strings.TrimSuffix(name, " Entwurf"))
+	}
+	if name == "" {
+		name = "Wassertest-Konfiguration"
+	}
+	return name + " Entwurf"
 }
 
 func (s *Service) UpdateDraftConfig(ctx context.Context, versionID int64, payload ConfigUpdatePayload) (ConfigVersionDetail, error) {

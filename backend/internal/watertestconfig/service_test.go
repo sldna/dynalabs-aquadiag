@@ -104,6 +104,13 @@ func TestDraftCanBeUpdatedAndActivated(t *testing.T) {
 	}
 }
 
+func TestDraftNameFromDoesNotRepeatSuffix(t *testing.T) {
+	got := draftNameFrom("JBL Freshwater Default v1 Entwurf Entwurf")
+	if got != "JBL Freshwater Default v1 Entwurf" {
+		t.Fatalf("draft name=%q", got)
+	}
+}
+
 func TestActiveVersionCannotBeUpdatedDirectly(t *testing.T) {
 	svc, ctx := setupService(t)
 	active, err := svc.GetActiveConfig(ctx)
