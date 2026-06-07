@@ -1,25 +1,32 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
-	"aquadiag/backend/internal/config"
+	"aquadiag/backend/internal/db"
+	"aquadiag/backend/internal/watertestconfig"
 )
 
-func loadTestWaterTestConfig(t *testing.T) *config.WaterTestConfigBundle {
+func loadTestWaterTestConfig(t *testing.T) *watertestconfig.Service {
 	t.Helper()
-	dir, err := config.ResolveConfigDir()
+	sqlDB, err := db.Open(filepath.Join(t.TempDir(), "config-api.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	bundle, err := config.LoadWaterTestConfig(dir)
-	if err != nil {
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	if err := db.Migrate(sqlDB); err != nil {
 		t.Fatal(err)
 	}
-	return bundle
+	svc := watertestconfig.NewService(sqlDB)
+	if err := svc.SeedDefaultJBLConfigIfEmpty(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	return svc
 }
 
 func TestWaterTestConfig_GET(t *testing.T) {
@@ -36,9 +43,9 @@ func TestWaterTestConfig_GET(t *testing.T) {
 	}
 
 	var out struct {
-		Tests      []config.WaterTestProfile            `json:"tests"`
-		Thresholds map[string]config.WaterTestThreshold `json:"thresholds"`
-		Timers     map[string]config.WaterTestTimer     `json:"timers"`
+		Tests      []watertestconfig.TestConfig              `json:"tests"`
+		Thresholds map[string]watertestconfig.ThresholdGroup `json:"thresholds"`
+		Timers     map[string]watertestconfig.TimerGroup     `json:"timers"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatal(err)

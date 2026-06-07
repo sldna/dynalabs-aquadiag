@@ -15,6 +15,11 @@ var ErrWaterTestNotFound = errors.New("water test not found")
 
 // InsertWaterTest persists a water test row; symptoms are stored as JSON array.
 func InsertWaterTest(ctx context.Context, q DBTX, tankID int64, w models.WaterTestInput, symptoms []string) (int64, error) {
+	return InsertWaterTestWithSnapshots(ctx, q, tankID, w, symptoms, "", "", "", "")
+}
+
+// InsertWaterTestWithSnapshots persists a water test row and optional immutable config snapshots.
+func InsertWaterTestWithSnapshots(ctx context.Context, q DBTX, tankID int64, w models.WaterTestInput, symptoms []string, configSnapshotJSON string, thresholdResultsSnapshotJSON string, configVersionName string, configVersionCreatedAt string) (int64, error) {
 	symJSON, err := json.Marshal(symptoms)
 	if err != nil {
 		return 0, err
@@ -22,8 +27,9 @@ func InsertWaterTest(ctx context.Context, q DBTX, tankID int64, w models.WaterTe
 	res, err := q.ExecContext(ctx, `
 INSERT INTO water_tests (
   tank_id, ph, kh_dkh, gh_dgh, temp_c, nitrite_mg_l, nitrate_mg_l, ammonium_mg_l,
-  phosphate_po4, iron_fe, oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes
-) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+  phosphate_po4, iron_fe, oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes,
+  config_snapshot_json, threshold_results_snapshot_json, config_version_name, config_version_created_at
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		tankID,
 		nullFloat(w.PH),
 		nullFloat(w.KhDKH),
@@ -39,6 +45,10 @@ INSERT INTO water_tests (
 		nullFloat(w.CO2MgL),
 		string(symJSON),
 		nullStr(w.Notes),
+		nullStr(&configSnapshotJSON),
+		nullStr(&thresholdResultsSnapshotJSON),
+		nullStr(&configVersionName),
+		nullStr(&configVersionCreatedAt),
 	)
 	if err != nil {
 		return 0, err
@@ -49,6 +59,7 @@ INSERT INTO water_tests (
 const waterTestSelectCols = `
 id, tank_id, ph, kh_dkh, gh_dgh, temp_c, nitrite_mg_l, nitrate_mg_l, ammonium_mg_l,
 phosphate_po4, iron_fe, oxygen_mg_l, oxygen_saturation_pct, co2_mg_l, symptoms_json, notes, created_at,
+config_snapshot_json, threshold_results_snapshot_json, config_version_name, config_version_created_at,
 (SELECT dr.id FROM diagnosis_results dr WHERE dr.water_test_id = water_tests.id ORDER BY dr.id DESC LIMIT 1) AS diagnosis_result_id`
 
 // ListWaterTestsByTank returns water tests for a tank, newest id first.
@@ -109,7 +120,7 @@ func DeleteWaterTestCascade(ctx context.Context, tx *sql.Tx, waterTestID int64) 
 func scanWaterTestRow(scan func(dest ...any) error) (models.WaterTestRecord, error) {
 	var rec models.WaterTestRecord
 	var ph, kh, gh, temp, no2, no3, nh4, po4, fe, o2, o2sat, co2 sql.NullFloat64
-	var notes sql.NullString
+	var notes, configSnapshot, thresholdSnapshot, configVersionName, configVersionCreatedAt sql.NullString
 	var diagnosisID sql.NullInt64
 	var symJSON string
 	err := scan(
@@ -130,6 +141,10 @@ func scanWaterTestRow(scan func(dest ...any) error) (models.WaterTestRecord, err
 		&symJSON,
 		&notes,
 		&rec.CreatedAt,
+		&configSnapshot,
+		&thresholdSnapshot,
+		&configVersionName,
+		&configVersionCreatedAt,
 		&diagnosisID,
 	)
 	if err != nil {
@@ -160,6 +175,10 @@ func scanWaterTestRow(scan func(dest ...any) error) (models.WaterTestRecord, err
 		id := diagnosisID.Int64
 		rec.DiagnosisResultID = &id
 	}
+	rec.ConfigSnapshotJSON = ptrString(configSnapshot)
+	rec.ThresholdResultsSnapshotJSON = ptrString(thresholdSnapshot)
+	rec.ConfigVersionName = ptrString(configVersionName)
+	rec.ConfigVersionCreatedAt = ptrString(configVersionCreatedAt)
 	rec.CreatedAt = normalizeSQLiteTimestamp(rec.CreatedAt)
 	return rec, nil
 }
@@ -169,6 +188,14 @@ func ptrFloat64(ns sql.NullFloat64) *float64 {
 		return nil
 	}
 	v := ns.Float64
+	return &v
+}
+
+func ptrString(ns sql.NullString) *string {
+	if !ns.Valid {
+		return nil
+	}
+	v := ns.String
 	return &v
 }
 

@@ -15,13 +15,15 @@ import (
 	"aquadiag/backend/internal/db"
 	"aquadiag/backend/internal/models"
 	"aquadiag/backend/internal/rules"
+	"aquadiag/backend/internal/watertestconfig"
 )
 
 // Service orchestriert Validierung, Persistenz und Regelauswertung.
 type Service struct {
-	db    *sql.DB
-	rules rules.Ruleset
-	ai    *ai.Service
+	db              *sql.DB
+	rules           rules.Ruleset
+	ai              *ai.Service
+	waterTestConfig *watertestconfig.Service
 
 	// now ist injizierbar, damit Tests einen festen RFC3339-Zeitstempel prüfen können.
 	now func() time.Time
@@ -30,6 +32,10 @@ type Service struct {
 // NewService baut den Diagnose-Service.
 func NewService(database *sql.DB, rs rules.Ruleset, aiSvc *ai.Service) *Service {
 	return &Service{db: database, rules: rs, ai: aiSvc, now: time.Now}
+}
+
+func (s *Service) SetWaterTestConfigService(waterTestConfig *watertestconfig.Service) {
+	s.waterTestConfig = waterTestConfig
 }
 
 // Diagnose validiert, speichert Wasserwerte, wertet Regeln aus und persistiert das Ergebnis.
@@ -51,7 +57,7 @@ func (s *Service) Diagnose(ctx context.Context, req models.DiagnoseRequest) (mod
 	}
 
 	symptoms := normalizeSymptoms(req.Symptoms)
-	waterTestID, err := db.InsertWaterTest(ctx, tx, tankID, req.Water, symptoms)
+	waterTestID, err := s.insertWaterTestWithSnapshot(ctx, tx, tankID, req.Water, symptoms)
 	if err != nil {
 		return models.DiagnoseAPIResponse{}, fmt.Errorf("water test: %w", err)
 	}
@@ -237,6 +243,40 @@ func hasMeasurementsOrSymptoms(w models.WaterTestInput, symptoms []string) bool 
 		w.PhosphatePO4 != nil || w.IronFe != nil || w.OxygenMgL != nil ||
 		w.OxygenSaturationPct != nil || w.CO2MgL != nil ||
 		(w.Notes != nil && strings.TrimSpace(*w.Notes) != "")
+}
+
+func (s *Service) insertWaterTestWithSnapshot(ctx context.Context, tx *sql.Tx, tankID int64, water models.WaterTestInput, symptoms []string) (int64, error) {
+	if s.waterTestConfig == nil {
+		return db.InsertWaterTest(ctx, tx, tankID, water, symptoms)
+	}
+	active, err := s.waterTestConfig.GetActiveConfig(ctx)
+	if err != nil {
+		return 0, err
+	}
+	configSnapshot, err := s.waterTestConfig.BuildConfigSnapshot(ctx, active.ID)
+	if err != nil {
+		return 0, err
+	}
+	thresholdSnapshot := s.waterTestConfig.BuildThresholdResultsSnapshot(configSnapshot, water)
+	configJSON, err := json.Marshal(configSnapshot)
+	if err != nil {
+		return 0, err
+	}
+	thresholdJSON, err := json.Marshal(thresholdSnapshot)
+	if err != nil {
+		return 0, err
+	}
+	return db.InsertWaterTestWithSnapshots(
+		ctx,
+		tx,
+		tankID,
+		water,
+		symptoms,
+		string(configJSON),
+		string(thresholdJSON),
+		active.Name,
+		active.CreatedAt,
+	)
 }
 
 func normalizeSymptoms(symptoms []string) []string {

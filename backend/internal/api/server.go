@@ -4,19 +4,22 @@ import (
 	"database/sql"
 	"net/http"
 
-	"aquadiag/backend/internal/config"
 	"aquadiag/backend/internal/diagnosis"
+	"aquadiag/backend/internal/watertestconfig"
 )
 
 // Server enthält HTTP-Handler und abhängige Services.
 type Server struct {
 	db              *sql.DB
 	diagnosis       *diagnosis.Service
-	waterTestConfig *config.WaterTestConfigBundle
+	waterTestConfig *watertestconfig.Service
 }
 
 // NewServer erstellt den API-Server. db und/oder diagnosis können nil sein (nicht genutzte Routen dann nicht aufrufen).
-func NewServer(database *sql.DB, diagnosis *diagnosis.Service, waterTestConfig *config.WaterTestConfigBundle) *Server {
+func NewServer(database *sql.DB, diagnosis *diagnosis.Service, waterTestConfig *watertestconfig.Service) *Server {
+	if waterTestConfig == nil && database != nil {
+		waterTestConfig = watertestconfig.NewService(database)
+	}
 	return &Server{
 		db:              database,
 		diagnosis:       diagnosis,
@@ -32,7 +35,8 @@ func RegisterRoutes(mux *http.ServeMux, srv *Server) {
 	mux.HandleFunc("/v1/water-tests/", srv.routeV1WaterTests)
 	mux.HandleFunc("/v1/diagnose", srv.handleDiagnose)
 	mux.HandleFunc("/v1/diagnoses/", srv.routeV1Diagnoses)
-	mux.HandleFunc("/v1/water-test-config", srv.handleWaterTestConfig)
+	mux.HandleFunc("/v1/water-test-config", srv.routeV1WaterTestConfig)
+	mux.HandleFunc("/v1/water-test-config/", srv.routeV1WaterTestConfig)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

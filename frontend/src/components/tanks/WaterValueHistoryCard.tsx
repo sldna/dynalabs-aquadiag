@@ -39,6 +39,12 @@ export function WaterValueHistoryCard({ tankId, test }: WaterValueHistoryCardPro
         </div>
       </header>
 
+      {test.threshold_source === "legacy_missing_snapshot" ? (
+        <p className="mt-3 rounded-button border border-aqua-deep/10 bg-aqua-soft/70 px-3 py-2 text-xs text-aqua-deep/75">
+          Legacy-Messung ohne Snapshot: Historische Bewertung nicht verfügbar.
+        </p>
+      ) : null}
+
       {rows.length > 0 ? (
         <dl className="mt-3 grid grid-cols-1 gap-2 text-sm">
           {rows.map((row) => (

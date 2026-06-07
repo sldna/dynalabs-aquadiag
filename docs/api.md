@@ -107,16 +107,20 @@ Antwort:
       "symptoms": [],
       "created_at": "2026-05-08T12:00:00Z",
       "diagnosis_result_id": 42,
-      "water_quality_status": "red",
+      "water_quality_status": "critical",
+      "threshold_source": "snapshot",
+      "config_snapshot_created_at": "2026-05-08T12:00:00Z",
+      "config_version_name": "JBL Freshwater Default v1",
       "water_quality_items": [
         {
-          "key": "no2",
+          "key": "nitrite_no2",
           "label": "Nitrit (NO₂)",
           "value": 0.4,
           "unit": "mg/l",
-          "status": "red",
-          "message": "Nitrit deutlich erhöht – akut kritisch für Fische.",
-          "recommendation_short": "Sofort 30–50 % Wasserwechsel, nicht füttern."
+          "status": "observe",
+          "threshold_status": "watch",
+          "threshold_source": "snapshot",
+          "message": "Nitrit ist erhöht – Filter und Fütterung prüfen."
         },
         {
           "key": "ph",
@@ -171,13 +175,15 @@ Validierung:
 - numerische Werte dürfen nicht negativ sein
 
 Antwort `201` enthält den gespeicherten `water_test` (inkl. `id`, `tank_id`,
-`created_at`, Ampel-Felder). `diagnosis_result_id` bleibt leer, bis eine
-Analyse explizit gestartet wird.
+`created_at`, Ampel-Felder und Snapshot-Metadaten). `diagnosis_result_id` bleibt
+leer, bis eine Analyse explizit gestartet wird. Das Backend speichert dabei
+`config_snapshot_json` und `threshold_results_snapshot_json` direkt an der
+Messung.
 
-### `GET /v1/water-test-config`
+### `GET /v1/water-test-config/active`
 
-Liefert die YAML-basierte Konfiguration für Schnellerfassung, UI-Ampel und Timer.
-Wird beim Öffnen von `/tanks/{id}/water-tests/new` geladen.
+Liefert die aktive SQLite-Konfiguration für Schnellerfassung, UI-Ampel und Timer.
+`GET /v1/water-test-config` bleibt als kompatibler Alias erhalten.
 
 Antwort `200`:
 
@@ -198,8 +204,8 @@ Antwort `200`:
       "unit": "mg/l",
       "ranges": [
         {
-          "min": 0,
-          "max": 30,
+          "min_value": 0,
+          "max_value": 30,
           "status": "ok",
           "message": "Nitrat liegt im üblichen Bereich."
         }
@@ -219,22 +225,36 @@ Antwort `200`:
 }
 ```
 
-Konfigurationsdateien (Repo): `backend/config/water-tests.yaml`,
-`water-test-thresholds.yaml`, `water-test-timers.yaml`.
+### Wassertest-Konfigurationsverwaltung
 
-Umgebungsvariable: `WATER_TEST_CONFIG_DIR` (optional, Default `./config` bzw.
-`/app/config` im Docker-Image).
+- `GET /v1/water-test-config/versions`
+- `GET /v1/water-test-config/versions/{id}`
+- `POST /v1/water-test-config/versions/duplicate-active`
+- `POST /v1/water-test-config/versions/{id}/duplicate`
+- `PUT /v1/water-test-config/versions/{id}`
+- `POST /v1/water-test-config/versions/{id}/validate`
+- `POST /v1/water-test-config/versions/{id}/activate`
 
-**Wichtig:** Die Config ersetzt **nicht** die Diagnose-Rule-Engine. Gespeicherte
-Wassertests erhalten weiterhin `water_quality_*` aus `internal/waterquality`
-(beim Lesen). Die Config-Schwellen dienen primär der Schnellerfassungs-UI und
-einer separaten Threshold-Auswertung (`internal/config.EvaluateThreshold`).
+Bearbeiten ist nur für Draft-Versionen erlaubt. Aktive und nicht-Draft-Versionen
+sind schreibgeschützt und müssen dupliziert werden. Aktivierung ist
+transaktional: erst validieren, dann alle anderen Versionen deaktivieren,
+Zielversion aktivieren, `is_draft=false` setzen und `activated_at` schreiben.
+
+**Wichtig:** Änderungen gelten nur für neue Messungen und neue Analysen. Alte
+Messungen werden nicht automatisch neu bewertet. Für historische Anzeige gilt
+ausschließlich `threshold_results_snapshot_json`; bei Legacy-Zeilen ohne
+Snapshot ist `threshold_source = "legacy_missing_snapshot"`.
+
+Die Config ersetzt **nicht** die Diagnose-Rule-Engine. Diagnose, Severity,
+Confidence, Maßnahmen und `matched_rules` kommen weiterhin ausschließlich aus
+der YAML-Regelengine.
 
 ### `GET /v1/water-tests/{id}`
 
-Eine Messung inkl. `symptoms` (decoded aus `symptoms_json`) sowie der
-deterministischen Ampel-Felder `water_quality_status` und
-`water_quality_items[]` (siehe unten).
+Eine Messung inkl. `symptoms` (decoded aus `symptoms_json`) sowie der aus dem
+Snapshot abgeleiteten Felder `water_quality_status`, `water_quality_items[]`,
+`threshold_source`, `config_snapshot_created_at` und optional
+`config_version_name`.
 
 ### `DELETE /v1/water-tests/{id}`
 
@@ -251,14 +271,19 @@ Diagnose aus.
 
 ### Ampelsystem (M3.5)
 
-Jede Water-Test-Antwort enthält zusätzlich eine **Orientierungs-Ampel**:
+Jede neue Water-Test-Antwort enthält zusätzlich eine **Orientierungs-Ampel** aus
+dem gespeicherten Snapshot:
 
 - `water_quality_status` (`string`): Gesamtstatus über alle gemessenen Werte.
   Mögliche Werte: `green`, `observe`, `warning`, `critical`, `unknown`
   (ältere Clients: `yellow` → `observe`, `red` → `critical`).
 - `water_quality_items[]`: pro bewertetem Wert ein Eintrag mit
   `key`, `label`, `value`, `unit`, `status`, `message`, optional
-  `recommendation_short`.
+  `threshold_status`, `threshold_message` und `threshold_source`.
+- `threshold_source`: `snapshot` oder `legacy_missing_snapshot`.
+
+Legacy-Messungen ohne Snapshot werden bewusst nicht anhand der aktuellen
+Konfiguration neu bewertet.
 
 Ableitung des Gesamtstatus:
 
