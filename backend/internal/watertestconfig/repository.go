@@ -124,6 +124,9 @@ ORDER BY d.sort_order, d.id`, versionID, versionID, versionID)
 		if err := rows.Scan(&t.ID, &t.Key, &t.Label, &t.Brand, &t.Unit, &t.InputType, &t.SortOrder, &t.IsActive); err != nil {
 			return nil, nil, err
 		}
+		t.Values = []ValueOption{}
+		t.Thresholds = []Threshold{}
+		t.Timers = []TimerStep{}
 		tests = append(tests, t)
 	}
 	if err := rows.Err(); err != nil {
