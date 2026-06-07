@@ -20,6 +20,7 @@ type waterTestPayload struct {
 	ID                 int64                    `json:"id"`
 	WaterQualityStatus string                   `json:"water_quality_status"`
 	WaterQualityItems  []map[string]interface{} `json:"water_quality_items"`
+	ThresholdSource    string                   `json:"threshold_source"`
 }
 
 func setupTanksAndTests(t *testing.T) (http.Handler, int64, []int64) {
@@ -66,7 +67,7 @@ func setupTanksAndTests(t *testing.T) (http.Handler, int64, []int64) {
 	return h, tankID, []int64{wt1, wt2, wt3}
 }
 
-func TestWaterTestDetail_IncludesWaterQualityFields(t *testing.T) {
+func TestWaterTestDetail_LegacyRowsAreNotReevaluated(t *testing.T) {
 	h, _, ids := setupTanksAndTests(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/water-tests/"+strconv.FormatInt(ids[1], 10), nil)
@@ -80,17 +81,20 @@ func TestWaterTestDetail_IncludesWaterQualityFields(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatal(err)
 	}
-	if out.WaterQualityStatus != "warning" {
-		t.Fatalf("status=%q want warning (no2=0.4)", out.WaterQualityStatus)
+	if out.WaterQualityStatus != "unknown" {
+		t.Fatalf("status=%q want unknown", out.WaterQualityStatus)
+	}
+	if out.ThresholdSource != "legacy_missing_snapshot" {
+		t.Fatalf("threshold_source=%q", out.ThresholdSource)
 	}
 	if len(out.WaterQualityItems) != 1 {
 		t.Fatalf("items=%d want 1; body=%s", len(out.WaterQualityItems), rec.Body.String())
 	}
-	if out.WaterQualityItems[0]["key"] != "no2" {
-		t.Fatalf("item key=%v want no2", out.WaterQualityItems[0]["key"])
+	if out.WaterQualityItems[0]["key"] != "nitrite_no2" {
+		t.Fatalf("item key=%v want nitrite_no2", out.WaterQualityItems[0]["key"])
 	}
-	if out.WaterQualityItems[0]["status"] != "warning" {
-		t.Fatalf("item status=%v want warning", out.WaterQualityItems[0]["status"])
+	if out.WaterQualityItems[0]["threshold_source"] != "legacy_missing_snapshot" {
+		t.Fatalf("item source=%v", out.WaterQualityItems[0]["threshold_source"])
 	}
 }
 

@@ -52,7 +52,7 @@ func (s *Server) handleCreateTankWaterTest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	id, err := db.InsertWaterTest(r.Context(), s.db, tankID, input, []string{})
+	id, err := s.insertQuickWaterTestWithSnapshot(r, tankID, input)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "database_error", "Wassertest konnte nicht gespeichert werden.")
 		return
@@ -63,6 +63,43 @@ func (s *Server) handleCreateTankWaterTest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	writeJSON(w, http.StatusCreated, enrichWaterTest(rec))
+}
+
+func (s *Server) insertQuickWaterTestWithSnapshot(r *http.Request, tankID int64, input models.WaterTestInput) (int64, error) {
+	if s.waterTestConfig == nil {
+		return db.InsertWaterTest(r.Context(), s.db, tankID, input, []string{})
+	}
+	if err := s.waterTestConfig.SeedDefaultJBLConfigIfEmpty(r.Context()); err != nil {
+		return 0, err
+	}
+	active, err := s.waterTestConfig.GetActiveConfig(r.Context())
+	if err != nil {
+		return 0, err
+	}
+	configSnapshot, err := s.waterTestConfig.BuildConfigSnapshot(r.Context(), active.ID)
+	if err != nil {
+		return 0, err
+	}
+	thresholdSnapshot := s.waterTestConfig.BuildThresholdResultsSnapshot(configSnapshot, input)
+	configJSON, err := json.Marshal(configSnapshot)
+	if err != nil {
+		return 0, err
+	}
+	thresholdJSON, err := json.Marshal(thresholdSnapshot)
+	if err != nil {
+		return 0, err
+	}
+	return db.InsertWaterTestWithSnapshots(
+		r.Context(),
+		s.db,
+		tankID,
+		input,
+		[]string{},
+		string(configJSON),
+		string(thresholdJSON),
+		active.Name,
+		active.CreatedAt,
+	)
 }
 
 func decodeCreateTankWaterTestBody(r *http.Request) (models.WaterTestInput, error) {

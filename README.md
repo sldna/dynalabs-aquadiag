@@ -59,14 +59,15 @@ Diagnose mit klaren nächsten Schritten erhalten.
 - **Wasserwert-Historie** pro Becken (neueste zuerst), inklusive Symptome und
   Diagnoseverknüpfung (`diagnosis_result_id`)
 - **Quick Water Test Logging**: schnelle mobile Erfassung ohne Diagnose-Start
-  über `/tanks/{id}/water-tests/new`, inkl. lokaler JBL-Timer (NO₂/NO₃/NH₄/PO₄/Fe)
+  über `/tanks/{id}/water-tests/new`, inkl. SQLite-basierter JBL-Werte,
+  Warnschwellen und Mehrschritt-Timer
 - **Verlaufsgrafiken** auf der Becken-Detailseite (`/dashboard/tanks/{id}`):
   einfache SVG-Line-Charts für pH, Nitrit, Nitrat, Temperatur (optional KH, GH,
   NH₄, CO₂) mit Zeitraumfilter 7/30 Tage/alle – reine Visualisierung, keine
   Diagnose aus Trends
-- **Ampelsystem für Wasserwerte** (M3.5): jede Messung erhält zusätzlich eine
-  einfache Grün/Gelb/Rot-Einschätzung pro Wert und für die Messung gesamt –
-  als Orientierung, ohne die deterministische Diagnose zu verändern
+- **Snapshot-Ampel für Wasserwerte**: neue Messungen speichern die verwendete
+  Messwert-, Schwellen- und Timer-Konfiguration samt Ergebnis-Snapshot –
+  spätere Config-Änderungen verändern alte Messungen nicht
 - **Landing & Branding**: Startseite (`/`) mit Hero, Nutzenkarten, Ablauf und
   Vertrauens-/Sicherheitshinweisen; Header mit Logo und Schriftzug
   „Dynalabs AquaDiag“; CTAs zur Analyse und Beckenübersicht
@@ -349,7 +350,9 @@ Die vollständige API-Referenz mit Beispiel-Bodies und Antwort-Schemata steht in
 | DELETE   | `/v1/tanks/{id}`                       | Becken + abhängige Daten löschen                     |
 | GET      | `/v1/tanks/{id}/water-tests`           | Wassertests eines Beckens (neueste zuerst)           |
 | POST     | `/v1/tanks/{id}/water-tests`           | Messung ohne Diagnose speichern                       |
-| GET      | `/v1/water-test-config`                | JBL-Profile, Warnschwellen und Timer (YAML-Config)   |
+| GET      | `/v1/water-test-config/active`         | aktive SQLite-Konfiguration für Erfassung            |
+| GET      | `/v1/water-test-config/versions`       | Config-Versionen listen                              |
+| POST     | `/v1/water-test-config/versions/duplicate-active` | aktive Version als Draft duplizieren      |
 | GET      | `/v1/water-tests/{id}`                 | einzelner Wassertest inkl. Symptome                  |
 | DELETE   | `/v1/water-tests/{id}`                 | Wassertest + abhängige Diagnosen löschen (Cascade)   |
 | POST     | `/v1/diagnose`                         | Diagnose erzeugen (Symptome + optionale Wasserwerte) |
@@ -373,25 +376,27 @@ Für schnelle Smartphone-Erfassung ohne Analyse:
 
 - Frontend-Route: `/tanks/{id}/water-tests/new`
 - API-Route: `POST /v1/tanks/{id}/water-tests`
-- Config: `GET /v1/water-test-config` (JBL-Testprofile, Warnschwellen, Timer)
+- Config: `GET /v1/water-test-config/active` (JBL-Testprofile, Warnschwellen, Timer)
 - Alle Wasserwerte sind optional, aber mindestens ein Messwert ist erforderlich.
 - Die Diagnose-Engine wird dabei **nicht** automatisch gestartet.
+- Beim Speichern werden `config_snapshot_json` und
+  `threshold_results_snapshot_json` an der Messung gespeichert.
 
-### Konfigurierbare Wassertest-Profile (YAML)
+### Konfigurierbare Wassertest-Profile (SQLite)
 
-Ohne Codeänderung anpassbar unter `backend/config/`:
+Die aktive Konfiguration liegt in SQLite und ist unter `/settings/water-tests`
+über Draft/Duplikat und Aktivierung bearbeitbar:
 
-| Datei | Inhalt |
-|-------|--------|
-| `water-tests.yaml` | Test-Key, Label, Marke, Einheit, Eingabetyp, auswählbare Werte |
-| `water-test-thresholds.yaml` | Warnschwellen (`ok` / `watch` / `critical`) pro Test-Key |
-| `water-test-timers.yaml` | JBL-Einwirkzeiten (auch Mehrschritt, z. B. O₂, SiO₂) |
+- verfügbare Tests, Labels, Einheiten und Sortierung
+- auswählbare JBL-Werte
+- Warnschwellen (`ok` / `watch` / `critical`)
+- Timer inklusive Mehrschritt-Timer (z. B. O₂, SiO₂)
 
-Umgebungsvariable: `WATER_TEST_CONFIG_DIR` (Default im Container: `/app/config`).
-
-**Hinweis:** Diese Config steuert Schnellerfassung, Ampel-Hinweise in der UI und Timer.
-Die **Diagnose-Rule-Engine** (`rules/aquarium-rules.yaml`) bleibt unverändert die
-alleinige Quelle für Diagnose, Severity, Confidence und Maßnahmen.
+**Wichtig:** Änderungen gelten nur für neue Messungen und neue Analysen. Alte
+Messungen werden nicht anhand der aktuellen Config neu bewertet. Für historische
+Anzeige ist ausschließlich der gespeicherte Snapshot maßgeblich. Die
+**Diagnose-Rule-Engine** (`rules/aquarium-rules.yaml`) bleibt unverändert die
+alleinige Quelle für Diagnose, Severity, Confidence, Maßnahmen und `matched_rules`.
 
 Beispiel:
 
@@ -413,8 +418,9 @@ curl -sS -X POST "http://localhost:8080/v1/tanks/3/water-tests" \
 
 ## Ampelsystem für Wasserwerte (M3.5)
 
-Jeder Wassertest erhält zusätzlich zur Diagnose eine einfache Ampel-Bewertung
-pro Messwert und für die Messung gesamt. Die Bewertung erscheint in den
+Jeder neue Wassertest erhält zusätzlich zur Diagnose eine einfache Ampel-Bewertung
+pro Messwert und für die Messung gesamt. Die Bewertung wird beim Speichern aus
+dem Config-Snapshot berechnet und erscheint in den
 Response-Feldern `water_quality_status` und `water_quality_items[]` (siehe
 [`docs/api.md`](docs/api.md)) und wird in der UI als kompaktes Badge sowie
 als zusammenfassende Karte dargestellt.
@@ -442,8 +448,9 @@ Grundregeln der Heuristik:
 > Ersatz für tierärztliche Diagnostik. Die Diagnoseentscheidung der
 > deterministischen Regel-Engine bleibt davon unberührt.
 
-Quelle der Wahrheit für die Grenzwerte:
-[`backend/internal/waterquality/evaluator.go`](backend/internal/waterquality/evaluator.go).
+Quelle der Wahrheit für historische Grenzwerte ist der Snapshot der jeweiligen
+Messung. Legacy-Messungen ohne Snapshot zeigen `legacy_missing_snapshot` und
+werden nicht automatisch nachbewertet.
 
 ## Severity-Werte
 

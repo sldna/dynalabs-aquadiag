@@ -40,6 +40,9 @@ export type WaterQualityItem = {
   status_label?: string;
   message: string;
   recommendation_short?: string;
+  threshold_status?: string;
+  threshold_message?: string;
+  threshold_source?: "snapshot" | "legacy_missing_snapshot" | string;
 };
 
 export type WaterTest = {
@@ -66,6 +69,9 @@ export type WaterTest = {
   water_quality_status?: WaterQualityStatus;
   /** Per-value traffic-light items (since M3.5); empty array when nothing measured. */
   water_quality_items?: WaterQualityItem[];
+  threshold_source?: "snapshot" | "legacy_missing_snapshot" | string;
+  config_snapshot_created_at?: string | null;
+  config_version_name?: string | null;
 };
 
 export type WaterTestsListResponse = {

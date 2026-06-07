@@ -36,6 +36,9 @@ type Item struct {
 	StatusLabel         string  `json:"status_label,omitempty"`
 	Message             string  `json:"message"`
 	RecommendationShort string  `json:"recommendation_short,omitempty"`
+	ThresholdStatus     string  `json:"threshold_status,omitempty"`
+	ThresholdMessage    string  `json:"threshold_message,omitempty"`
+	ThresholdSource     string  `json:"threshold_source,omitempty"`
 }
 
 // Assessment is the bundled traffic-light view for a water test.
