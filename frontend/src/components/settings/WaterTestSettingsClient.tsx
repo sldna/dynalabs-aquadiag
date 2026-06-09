@@ -155,7 +155,7 @@ export function WaterTestSettingsClient() {
           {validation ? (
             <div className={`rounded-card border p-3 text-sm ${validation.valid ? "border-status-success/40 bg-status-success/10" : "border-status-critical/30 bg-status-critical/5"}`}>
               <p className="font-semibold text-aqua-deep">{validation.valid ? "Validierung erfolgreich" : "Validierungsfehler"}</p>
-              {validation.errors.length > 0 ? <ul className="mt-2 list-disc space-y-1 pl-5 text-aqua-deep/80">{validation.errors.map((e) => <li key={`${e.field}-${e.code}`}>{e.field}: {e.message}</li>)}</ul> : null}
+              {validation.errors && validation.errors.length > 0 ? <ul className="mt-2 list-disc space-y-1 pl-5 text-aqua-deep/80">{validation.errors.map((e) => <li key={`${e.field}-${e.code}`}>{e.field}: {e.message}</li>)}</ul> : null}
             </div>
           ) : null}
 

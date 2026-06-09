@@ -14,7 +14,7 @@ const (
 )
 
 func ValidateDetail(detail ConfigVersionDetail) ValidationResult {
-	var issues []ValidationIssue
+	issues := []ValidationIssue{}
 	activeKeys := map[string]bool{}
 
 	for ti, test := range detail.Tests {
