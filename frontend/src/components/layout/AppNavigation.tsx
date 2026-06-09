@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export type NavActiveKey = "home" | "tanks" | "diagnose";
+export type NavActiveKey = "home" | "tanks" | "diagnose" | "settings";
 
 const inactiveLink =
   "inline-flex min-h-[44px] items-center justify-center rounded-button border border-aqua-blue/35 bg-white px-3 py-2 text-sm font-semibold text-aqua-deep shadow-sm outline-none ring-offset-2 ring-offset-white transition-colors hover:border-aqua-blue hover:bg-aqua-soft focus-visible:ring-2 focus-visible:ring-aqua-blue";
@@ -22,6 +22,9 @@ export function AppNavigation({ active }: { active: NavActiveKey }) {
       </Link>
       <Link href="/dashboard/diagnose" className={active === "diagnose" ? activeLink : inactiveLink}>
         Diagnose
+      </Link>
+      <Link href="/settings/water-tests" className={active === "settings" ? activeLink : inactiveLink}>
+        Einstellungen
       </Link>
     </nav>
   );
