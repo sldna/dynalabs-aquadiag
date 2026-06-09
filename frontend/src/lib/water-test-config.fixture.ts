@@ -113,6 +113,7 @@ export const MOCK_WATER_TEST_CONFIG: WaterTestConfigResponse = {
     o2: {
       test_key: "o2",
       label: "O₂",
+      field_key: "oxygen_mg_l",
       steps: [
         { step_id: "o2_step1", label: "Schritt 1", duration_seconds: 30 },
         { step_id: "o2_step2", label: "Schritt 2", duration_seconds: 600 },

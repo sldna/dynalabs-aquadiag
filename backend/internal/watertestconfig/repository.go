@@ -127,16 +127,21 @@ ORDER BY c.sort_order, d.id`, versionID)
 		t.Thresholds = []Threshold{}
 		t.Timers = []TimerStep{}
 		t.CanDelete = true
-		if linked, err := r.hasMeasurementsForTestKey(ctx, t.Key); err != nil {
-			return nil, nil, err
-		} else if linked {
-			t.CanDelete = false
-			t.DeleteNote = "Dieser Wassertest ist bereits mit Messungen verknüpft."
-		}
 		tests = append(tests, t)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, nil, err
+	}
+	for i := range tests {
+		if linked, err := r.hasMeasurementsForTestKey(ctx, tests[i].Key); err != nil {
+			return nil, nil, err
+		} else if linked {
+			tests[i].CanDelete = false
+			tests[i].DeleteNote = "Dieser Wassertest ist bereits mit Messungen verknüpft."
+		}
 	}
 	byID := map[int64]*TestConfig{}
 	for i := range tests {
