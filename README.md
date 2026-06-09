@@ -205,7 +205,8 @@ Client-Werte.
 Für den normalen App-Betrieb auf der Synology ist das in der Praxis meist
 unkritisch: Browser-Requests laufen über den eingebauten Next.js-Proxy unter
 `/api/backend` (siehe `frontend/src/app/api/backend/[...path]/route.ts`), der
-serverseitig `API_INTERNAL_BASE_URL=http://backend:8080` nutzt. CORS muss nur
+serverseitig standardmäßig `API_INTERNAL_BASE_URL=http://host.docker.internal:8080`
+nutzt. CORS muss nur
 zwischen Browser-Origin (Frontend-Port) und direkten Backend-Aufrufen passen –
 die Proxy-Route vermeidet Cross-Origin-Fetches vom UI.
 
@@ -326,7 +327,7 @@ Die wichtigsten Variablen aus `.env.example`:
 | `RULES_PATH`                | autom. erkannt             | optionaler Pfad zur YAML-Regelbasis          |
 | `CORS_ALLOWED_ORIGINS`      | Localhost-Ports            | erlaubte Browser-Origins                    |
 | `NEXT_PUBLIC_API_BASE_URL`  | `http://localhost:8080`    | Browser-Sicht auf die API                    |
-| `API_INTERNAL_BASE_URL`     | `http://backend:8080`      | Server-Sicht des Frontends auf die API       |
+| `API_INTERNAL_BASE_URL`     | `http://host.docker.internal:8080` | Server-Sicht des Frontends auf die API |
 | `AI_ENABLED`                | `false`                    | AI-Erklärungsschicht an/aus                  |
 | `AI_API_KEY` / `AI_BASE_URL` / `AI_MODEL` | leer        | nur nötig wenn AI aktiv                      |
 | `AI_TIMEOUT_SECONDS`        | `8`                        | hartes Timeout für AI-Aufrufe                 |
