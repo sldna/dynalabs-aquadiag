@@ -52,12 +52,28 @@ func (s *Server) handleWaterTestConfigActive(w http.ResponseWriter, r *http.Requ
 
 func activeCaptureConfig(in watertestconfig.ConfigVersionDetail) watertestconfig.ConfigVersionDetail {
 	tests := make([]watertestconfig.TestConfig, 0, len(in.Tests))
+	activeKeys := map[string]bool{}
 	for _, test := range in.Tests {
 		if test.IsActive {
 			tests = append(tests, test)
+			activeKeys[test.Key] = true
 		}
 	}
 	in.Tests = tests
+	thresholds := map[string]watertestconfig.ThresholdGroup{}
+	for key, threshold := range in.Thresholds {
+		if activeKeys[key] {
+			thresholds[key] = threshold
+		}
+	}
+	timers := map[string]watertestconfig.TimerGroup{}
+	for key, timer := range in.Timers {
+		if activeKeys[key] || (timer.FieldKey != "" && activeKeys[timer.FieldKey]) {
+			timers[key] = timer
+		}
+	}
+	in.Thresholds = thresholds
+	in.Timers = timers
 	return in
 }
 

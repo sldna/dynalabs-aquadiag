@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import {
   activateWaterTestConfigVersion,
+  activeWaterTestProfiles,
   duplicateActiveWaterTestConfig,
   fetchWaterTestConfigVersion,
   fetchWaterTestConfigVersions,
@@ -105,6 +106,7 @@ export function WaterTestSettingsClient() {
   }
 
   const activeName = useMemo(() => versions.find((v) => v.is_active)?.name ?? "Keine aktive Version", [versions]);
+  const previewTests = useMemo(() => activeWaterTestProfiles(selected?.tests ?? []), [selected]);
 
   return (
     <div className="space-y-5">
@@ -159,6 +161,29 @@ export function WaterTestSettingsClient() {
             </div>
           ) : null}
 
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="text-sm font-medium text-aqua-deep">
+              Versionsname
+              <input
+                disabled={readonly}
+                value={selected.name ?? ""}
+                onChange={(e) => updateSelected({ ...selected, name: e.target.value })}
+                className="mt-1 w-full rounded-button border border-aqua-deep/15 px-3 py-2 disabled:bg-aqua-deep/5"
+              />
+            </label>
+            <label className="text-sm font-medium text-aqua-deep">
+              Beschreibung
+              <input
+                disabled={readonly}
+                value={selected.description ?? ""}
+                onChange={(e) => updateSelected({ ...selected, description: e.target.value })}
+                className="mt-1 w-full rounded-button border border-aqua-deep/15 px-3 py-2 disabled:bg-aqua-deep/5"
+              />
+            </label>
+          </div>
+
+          <WaterTestFormPreview tests={previewTests} />
+
           <div className="space-y-3">
             {selected.tests.map((test, index) => (
               <TestEditorCard
@@ -170,6 +195,11 @@ export function WaterTestSettingsClient() {
                   tests[index] = next;
                   updateSelected({ ...selected, tests });
                 }}
+                onDelete={() => {
+                  const ok = window.confirm(`Wassertest "${test.label}" aus diesem Entwurf löschen?`);
+                  if (!ok) return;
+                  updateSelected({ ...selected, tests: selected.tests.filter((_, idx) => idx !== index) });
+                }}
               />
             ))}
           </div>
@@ -179,10 +209,87 @@ export function WaterTestSettingsClient() {
   );
 }
 
-function TestEditorCard({ test, readonly, onChange }: { test: NonNullable<WaterTestConfigResponse["tests"]>[number]; readonly: boolean; onChange: (test: NonNullable<WaterTestConfigResponse["tests"]>[number]) => void }) {
+function WaterTestFormPreview({ tests }: { tests: NonNullable<WaterTestConfigResponse["tests"]> }) {
+  return (
+    <section className="rounded-card border border-aqua-blue/25 bg-aqua-soft/50 p-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-aqua-deep">Formular-Vorschau</h3>
+          <p className="text-xs text-aqua-deep/70">So erscheinen aktive Messwerte nach der Aktivierung im Erfassungsformular.</p>
+        </div>
+        <span className="text-xs font-semibold text-aqua-deep/60">{tests.length} aktive Messwerte</span>
+      </div>
+      <div className="mt-3 space-y-3">
+        {tests.length > 0 ? (
+          tests.map((test) => (
+            <div key={test.key} className="rounded-card border border-aqua-deep/10 bg-white p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="text-sm font-semibold text-aqua-deep">
+                  {test.label}
+                  {test.brand ? <span className="ml-2 text-xs font-normal text-aqua-deep/55">{test.brand}</span> : null}
+                </p>
+                {test.unit ? <span className="text-xs font-medium text-aqua-deep/60">{test.unit}</span> : null}
+              </div>
+              {test.input_type === "select" && test.values?.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {test.values.map((opt) => (
+                    <span key={`${test.key}-${opt.value}-${opt.display_value ?? opt.label}`} className="rounded-lg border border-aqua-deep/15 bg-aqua-soft px-3 py-2 text-xs font-medium text-aqua-deep">
+                      {opt.display_value ?? opt.label}
+                      {test.unit ? ` ${test.unit}` : ""}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="min-h-[42px] flex-1 rounded-lg border border-aqua-deep/15 bg-white px-3 py-2 text-sm text-aqua-deep/45">Zahl eingeben</div>
+                  {test.unit ? <span className="rounded-lg border border-aqua-deep/10 bg-aqua-soft px-3 py-2 text-xs font-medium text-aqua-deep/80">{test.unit}</span> : null}
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <p className="rounded-lg border border-status-warning/30 bg-white px-3 py-2 text-sm text-aqua-deep/75">Keine aktiven Messwerte. Aktiviere mindestens einen Wassertest, bevor du den Entwurf aktivierst.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function TestEditorCard({
+  test,
+  readonly,
+  onChange,
+  onDelete,
+}: {
+  test: NonNullable<WaterTestConfigResponse["tests"]>[number];
+  readonly: boolean;
+  onChange: (test: NonNullable<WaterTestConfigResponse["tests"]>[number]) => void;
+  onDelete: () => void;
+}) {
   const disabled = readonly;
+  const canDelete = !disabled && test.can_delete !== false;
   return (
     <article className="rounded-card border border-aqua-deep/10 bg-aqua-soft/40 p-4">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-aqua-deep">{test.label}</p>
+          <p className="text-xs text-aqua-deep/60">Key: {test.key}</p>
+        </div>
+        <button
+          type="button"
+          disabled={!canDelete}
+          onClick={onDelete}
+          title={test.delete_blocked_reason ?? "Nur Entwürfe können angepasst werden."}
+          className="rounded-button border border-status-critical/40 bg-white px-3 py-2 text-sm font-semibold text-status-critical disabled:opacity-50"
+        >
+          Wassertest löschen
+        </button>
+      </div>
+      {test.can_delete === false && test.delete_blocked_reason ? (
+        <p className="mb-3 rounded-lg border border-status-warning/30 bg-status-warning/10 px-3 py-2 text-xs text-aqua-deep">
+          {test.delete_blocked_reason}
+        </p>
+      ) : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <label className="text-sm font-medium text-aqua-deep">Label<input disabled={disabled} value={test.label} onChange={(e) => onChange({ ...test, label: e.target.value })} className="mt-1 w-full rounded-button border border-aqua-deep/15 px-3 py-2 disabled:bg-aqua-deep/5" /></label>
         <label className="text-sm font-medium text-aqua-deep">Einheit<input disabled={disabled} value={test.unit} onChange={(e) => onChange({ ...test, unit: e.target.value })} className="mt-1 w-full rounded-button border border-aqua-deep/15 px-3 py-2 disabled:bg-aqua-deep/5" /></label>

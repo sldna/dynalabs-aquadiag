@@ -9,6 +9,7 @@ export const MOCK_WATER_TEST_CONFIG: WaterTestConfigResponse = {
       brand: "JBL",
       unit: "",
       input_type: "number",
+      is_active: true,
       values: [],
     },
     {
@@ -17,6 +18,7 @@ export const MOCK_WATER_TEST_CONFIG: WaterTestConfigResponse = {
       brand: "JBL",
       unit: "mg/l",
       input_type: "select",
+      is_active: true,
       values: [{ value: 0, label: "0" }],
     },
     {
@@ -25,6 +27,7 @@ export const MOCK_WATER_TEST_CONFIG: WaterTestConfigResponse = {
       brand: "JBL",
       unit: "mg/l",
       input_type: "select",
+      is_active: true,
       values: [
         { value: 0, label: "0" },
         { value: 0.5, label: "0,5" },
@@ -36,6 +39,7 @@ export const MOCK_WATER_TEST_CONFIG: WaterTestConfigResponse = {
       brand: "JBL",
       unit: "mg/l",
       input_type: "select",
+      is_active: true,
       values: [{ value: 0, label: "0" }],
     },
     {
@@ -44,7 +48,35 @@ export const MOCK_WATER_TEST_CONFIG: WaterTestConfigResponse = {
       brand: "JBL",
       unit: "mg/l",
       input_type: "select",
+      is_active: true,
       values: [{ value: 0, label: "0" }],
+    },
+    {
+      key: "oxygen_mg_l",
+      label: "Sauerstoff (O₂)",
+      brand: "JBL",
+      unit: "mg/l",
+      input_type: "number",
+      is_active: true,
+      values: [],
+    },
+    {
+      key: "silicate_sio2",
+      label: "Silikat (SiO₂)",
+      brand: "JBL",
+      unit: "mg/l",
+      input_type: "number",
+      is_active: true,
+      values: [],
+    },
+    {
+      key: "copper_cu",
+      label: "Kupfer (Cu)",
+      brand: "JBL",
+      unit: "mg/l",
+      input_type: "number",
+      is_active: false,
+      values: [],
     },
   ],
   thresholds: {
@@ -89,6 +121,7 @@ export const MOCK_WATER_TEST_CONFIG: WaterTestConfigResponse = {
     sio2: {
       test_key: "sio2",
       label: "SiO₂",
+      field_key: "silicate_sio2",
       steps: [
         { step_id: "sio2_step1", label: "Schritt 1", duration_seconds: 180 },
         { step_id: "sio2_step2", label: "Schritt 2", duration_seconds: 180 },

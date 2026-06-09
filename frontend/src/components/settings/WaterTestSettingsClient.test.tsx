@@ -22,9 +22,25 @@ const activeVersion = {
       input_type: "select",
       sort_order: 1,
       is_active: true,
+      can_delete: false,
+      delete_blocked_reason: "Dieser Wassertest ist bereits mit Messungen verknüpft.",
       values: [{ value: 0.5, label: "0,5", display_value: "0,5", sort_order: 1 }],
       thresholds: [{ min_value: 0, max_value: 30, status: "ok", message: "Nitrat liegt im üblichen Bereich.", sort_order: 1 }],
       timers: [{ step_label: "Einwirkzeit", label: "Einwirkzeit", duration_seconds: 300, step_order: 0 }],
+    },
+    {
+      id: 2,
+      key: "phosphate_po4",
+      label: "Phosphat (PO₄)",
+      brand: "JBL",
+      unit: "mg/l",
+      input_type: "number",
+      sort_order: 2,
+      is_active: true,
+      can_delete: true,
+      values: [],
+      thresholds: [],
+      timers: [],
     },
   ],
   thresholds: {},
@@ -36,6 +52,7 @@ const draftVersion = { ...activeVersion, id: 2, name: "JBL Freshwater Default v1
 describe("WaterTestSettingsClient", () => {
   beforeEach(() => {
     let selected: WaterTestConfigResponse = activeVersion;
+    vi.stubGlobal("confirm", vi.fn(() => true));
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -80,10 +97,16 @@ describe("WaterTestSettingsClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Aktive Version duplizieren" }));
     expect(await screen.findByText("Entwurf ist bearbeitbar.")).toBeInTheDocument();
 
+    fireEvent.change(screen.getByLabelText("Versionsname"), { target: { value: "Meine JBL-Skala" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Wassertest löschen" })[1]);
+    expect(screen.queryByText("Phosphat (PO₄)")).not.toBeInTheDocument();
+    expect(screen.getByText("1 aktive Messwerte")).toBeInTheDocument();
+
     fireEvent.change(screen.getAllByLabelText("Nachricht")[0], { target: { value: "Nitrat bleibt ok." } });
     fireEvent.change(screen.getAllByLabelText("Sekunden")[0], { target: { value: "600" } });
     fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
     await screen.findByText("Entwurf gespeichert.");
+    expect(await screen.findByDisplayValue("Meine JBL-Skala")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Validieren" }));
     await screen.findByText("Validierung erfolgreich");

@@ -16,6 +16,7 @@ const (
 func ValidateDetail(detail ConfigVersionDetail) ValidationResult {
 	issues := []ValidationIssue{}
 	activeKeys := map[string]bool{}
+	activeTestCount := 0
 
 	for ti, test := range detail.Tests {
 		prefix := fmt.Sprintf("tests[%d]", ti)
@@ -35,6 +36,9 @@ func ValidateDetail(detail ConfigVersionDetail) ValidationResult {
 			}
 			activeKeys[key] = true
 		}
+		if test.IsActive {
+			activeTestCount++
+		}
 		issues = append(issues, validateThresholdsForTest(prefix, test.Thresholds)...)
 		for si, timer := range test.Timers {
 			if strings.TrimSpace(timer.StepLabel) == "" && strings.TrimSpace(timer.Label) == "" {
@@ -44,6 +48,9 @@ func ValidateDetail(detail ConfigVersionDetail) ValidationResult {
 				issues = appendIssue(issues, fmt.Sprintf("%s.timers[%d].duration_seconds", prefix, si), "invalid_range", "duration_seconds muss größer als 0 sein.")
 			}
 		}
+	}
+	if activeTestCount == 0 {
+		issues = appendIssue(issues, "tests", "required", "Mindestens ein Wassertest muss aktiv sein.")
 	}
 
 	return ValidationResult{Valid: len(issues) == 0, Errors: issues}

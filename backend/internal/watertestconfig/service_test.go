@@ -104,6 +104,107 @@ func TestDraftCanBeUpdatedAndActivated(t *testing.T) {
 	}
 }
 
+func TestDraftCanRemoveUnmeasuredTestWithoutChangingOldVersion(t *testing.T) {
+	svc, ctx := setupService(t)
+	oldActive, err := svc.GetActiveConfig(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	draft, err := svc.CreateDraftFromActive(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withoutPhosphate := draft.Tests[:0]
+	for _, test := range draft.Tests {
+		if test.Key != "phosphate_po4" {
+			withoutPhosphate = append(withoutPhosphate, test)
+		}
+	}
+	updated, err := svc.UpdateDraftConfig(ctx, draft.ID, ConfigUpdatePayload{Tests: withoutPhosphate})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasTest(updated.Tests, "phosphate_po4") {
+		t.Fatal("removed test still present in draft")
+	}
+	reloadedOld, err := svc.GetConfigVersion(ctx, oldActive.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasTest(reloadedOld.Tests, "phosphate_po4") {
+		t.Fatal("old version lost removed draft test")
+	}
+	activated, err := svc.ActivateConfigVersion(ctx, draft.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasTest(activated.Tests, "phosphate_po4") {
+		t.Fatal("removed test still present after activation")
+	}
+}
+
+func TestMeasuredTestIsNotDeleteable(t *testing.T) {
+	svc, ctx := setupService(t)
+	tankID, err := db.InsertTank(ctx, svc.repo.db, "Wohnzimmer", 180)
+	if err != nil {
+		t.Fatal(err)
+	}
+	no3 := 0.5
+	if _, err := db.InsertWaterTest(ctx, svc.repo.db, tankID, models.WaterTestInput{NitrateMgL: &no3}, []string{}); err != nil {
+		t.Fatal(err)
+	}
+	active, err := svc.GetActiveConfig(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var nitrate *TestConfig
+	var phosphate *TestConfig
+	for i := range active.Tests {
+		switch active.Tests[i].Key {
+		case "nitrate_no3":
+			nitrate = &active.Tests[i]
+		case "phosphate_po4":
+			phosphate = &active.Tests[i]
+		}
+	}
+	if nitrate == nil || nitrate.CanDelete {
+		t.Fatalf("nitrate should be blocked from deletion: %+v", nitrate)
+	}
+	if phosphate == nil || !phosphate.CanDelete {
+		t.Fatalf("phosphate should be deleteable: %+v", phosphate)
+	}
+}
+
+func TestMeasuredTestCannotBeRemovedFromDraft(t *testing.T) {
+	svc, ctx := setupService(t)
+	tankID, err := db.InsertTank(ctx, svc.repo.db, "Wohnzimmer", 180)
+	if err != nil {
+		t.Fatal(err)
+	}
+	no3 := 0.5
+	if _, err := db.InsertWaterTest(ctx, svc.repo.db, tankID, models.WaterTestInput{NitrateMgL: &no3}, []string{}); err != nil {
+		t.Fatal(err)
+	}
+	draft, err := svc.CreateDraftFromActive(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := draft.Tests[:0]
+	for _, test := range draft.Tests {
+		if test.Key != "nitrate_no3" {
+			next = append(next, test)
+		}
+	}
+	_, err = svc.UpdateDraftConfig(ctx, draft.ID, ConfigUpdatePayload{Tests: next})
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+	res, ok := IsValidationError(err)
+	if !ok || res.Valid {
+		t.Fatalf("expected validation result, got ok=%v res=%+v err=%v", ok, res, err)
+	}
+}
+
 func TestDraftNameFromDoesNotRepeatSuffix(t *testing.T) {
 	got := draftNameFrom("JBL Freshwater Default v1 Entwurf Entwurf")
 	if got != "JBL Freshwater Default v1 Entwurf" {
@@ -181,4 +282,13 @@ func TestThresholdResultsSnapshotIsStableAfterConfigChange(t *testing.T) {
 
 func floatPtr(v float64) *float64 {
 	return &v
+}
+
+func hasTest(tests []TestConfig, key string) bool {
+	for _, test := range tests {
+		if test.Key == key {
+			return true
+		}
+	}
+	return false
 }

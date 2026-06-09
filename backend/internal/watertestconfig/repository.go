@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var ErrNotFound = errors.New("water test config not found")
@@ -107,13 +108,11 @@ func (r *Repository) getDetail(ctx context.Context, id int64) (ConfigVersionDeta
 
 func (r *Repository) loadDefinitions(ctx context.Context, versionID int64) ([]TestConfig, map[int64]*TestConfig, error) {
 	rows, err := r.db.QueryContext(ctx, `
-SELECT DISTINCT d.id, d.test_key, d.label, d.brand, d.unit, d.input_type, d.sort_order, d.is_active
-FROM water_test_definitions d
-WHERE d.is_active = 1
-   OR d.id IN (SELECT test_definition_id FROM water_test_value_options WHERE config_version_id = ?)
-   OR d.id IN (SELECT test_definition_id FROM water_test_thresholds WHERE config_version_id = ?)
-   OR d.id IN (SELECT test_definition_id FROM water_test_timers WHERE config_version_id = ?)
-ORDER BY d.sort_order, d.id`, versionID, versionID, versionID)
+SELECT d.id, d.test_key, c.label, c.brand, c.unit, c.input_type, c.sort_order, c.is_active
+FROM water_test_config_tests c
+JOIN water_test_definitions d ON d.id = c.test_definition_id
+WHERE c.config_version_id = ?
+ORDER BY c.sort_order, d.id`, versionID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -127,6 +126,13 @@ ORDER BY d.sort_order, d.id`, versionID, versionID, versionID)
 		t.Values = []ValueOption{}
 		t.Thresholds = []Threshold{}
 		t.Timers = []TimerStep{}
+		t.CanDelete = true
+		if linked, err := r.hasMeasurementsForTestKey(ctx, t.Key); err != nil {
+			return nil, nil, err
+		} else if linked {
+			t.CanDelete = false
+			t.DeleteNote = "Dieser Wassertest ist bereits mit Messungen verknüpft."
+		}
 		tests = append(tests, t)
 	}
 	if err := rows.Err(); err != nil {
@@ -137,6 +143,50 @@ ORDER BY d.sort_order, d.id`, versionID, versionID, versionID)
 		byID[tests[i].ID] = &tests[i]
 	}
 	return tests, byID, nil
+}
+
+func (r *Repository) hasMeasurementsForTestKey(ctx context.Context, key string) (bool, error) {
+	column, ok := waterTestMeasurementColumn(key)
+	if !ok {
+		return false, nil
+	}
+	var found int
+	err := r.db.QueryRowContext(ctx, `SELECT 1 FROM water_tests WHERE `+column+` IS NOT NULL LIMIT 1`).Scan(&found)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+func waterTestMeasurementColumn(key string) (string, bool) {
+	switch strings.TrimSpace(key) {
+	case "temperature_c":
+		return "temp_c", true
+	case "ph":
+		return "ph", true
+	case "kh":
+		return "kh_dkh", true
+	case "gh":
+		return "gh_dgh", true
+	case "nitrite_no2":
+		return "nitrite_mg_l", true
+	case "nitrate_no3":
+		return "nitrate_mg_l", true
+	case "ammonium_nh4":
+		return "ammonium_mg_l", true
+	case "phosphate_po4":
+		return "phosphate_po4", true
+	case "iron_fe":
+		return "iron_fe", true
+	case "oxygen_mg_l":
+		return "oxygen_mg_l", true
+	case "oxygen_saturation_pct":
+		return "oxygen_saturation_pct", true
+	case "co2_mg_l":
+		return "co2_mg_l", true
+	default:
+		return "", false
+	}
 }
 
 func (r *Repository) loadValues(ctx context.Context, versionID int64, byID map[int64]*TestConfig) error {
