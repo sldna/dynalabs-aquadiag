@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"aquadiag/backend/internal/db"
@@ -27,6 +28,24 @@ func loadTestWaterTestConfig(t *testing.T) *watertestconfig.Service {
 		t.Fatal(err)
 	}
 	return svc
+}
+
+func TestWaterTestConfig_DELETEVersion(t *testing.T) {
+	cfg := loadTestWaterTestConfig(t)
+	draft, err := cfg.CreateDraftFromActive(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := NewServer(nil, nil, cfg)
+	h := testMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodDelete, "/v1/water-test-config/versions/"+strconv.FormatInt(draft.ID, 10), nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status=%d %s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestWaterTestConfig_GET(t *testing.T) {

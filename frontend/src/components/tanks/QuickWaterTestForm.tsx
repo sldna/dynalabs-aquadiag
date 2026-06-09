@@ -213,6 +213,7 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
         <p className="text-xs font-semibold uppercase tracking-wide text-aqua-deep/60">Becken</p>
         <p className="mt-1 text-lg font-semibold text-aqua-deep">{tankName}</p>
         <p className="text-sm text-aqua-deep/75">Du kannst Werte einzeln erfassen – eine Diagnose ist nicht erforderlich.</p>
+        <p className="mt-2 text-xs font-medium text-aqua-deep/65">Aktive Wassertest-Version: {config.name ?? "Unbenannt"}</p>
       </section>
 
       {notifHint && !notifHintDismissed ? (
@@ -256,8 +257,8 @@ export function QuickWaterTestForm({ tankId, tankName }: QuickWaterTestFormProps
 
         {standaloneTimerGroups.length > 0 ? (
           <TimerGroupsSection
-            title="Weitere JBL-Wassertest-Timer"
-            description="Timer für Tests ohne eigenes Eingabefeld – parallel zu den Messwert-Timern nutzbar."
+            title="Zusätzliche konfigurierte Timer"
+            description="Diese Timer sind in der aktiven Wassertest-Version ohne eigenes Eingabefeld aktiviert."
             standbyHint={STANDBY_HINT}
             groups={standaloneTimerGroups}
             views={views}

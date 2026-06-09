@@ -17,6 +17,7 @@ export type WaterValueHistoryCardProps = {
 export function WaterValueHistoryCard({ tankId, test }: WaterValueHistoryCardProps) {
   const when = formatDateTimeDE(test.created_at);
   const rows = measurementRowsForWaterTest(test);
+  const isLegacy = test.threshold_source === "legacy_missing_snapshot";
 
   return (
     <article
@@ -26,7 +27,10 @@ export function WaterValueHistoryCard({ tankId, test }: WaterValueHistoryCardPro
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-sm font-semibold text-aqua-deep">{when ?? "—"}</p>
-          <WaterQualityBadge status={test.water_quality_status} />
+          <WaterQualityBadge status={test.water_quality_status} label={isLegacy ? "Historisch" : undefined} />
+          <p className="text-xs text-aqua-deep/60">
+            {test.config_version_name ? `Bewertet mit: ${test.config_version_name}` : "Keine gespeicherte Wassertest-Version"}
+          </p>
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <Link
@@ -39,9 +43,9 @@ export function WaterValueHistoryCard({ tankId, test }: WaterValueHistoryCardPro
         </div>
       </header>
 
-      {test.threshold_source === "legacy_missing_snapshot" ? (
+      {isLegacy ? (
         <p className="mt-3 rounded-button border border-aqua-deep/10 bg-aqua-soft/70 px-3 py-2 text-xs text-aqua-deep/75">
-          Legacy-Messung ohne Snapshot: Historische Bewertung nicht verfügbar.
+          Historische Messung ohne gespeicherte Wassertest-Version: Bewertung nicht rückwirkend berechnet.
         </p>
       ) : null}
 

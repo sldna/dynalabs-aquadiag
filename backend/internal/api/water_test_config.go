@@ -67,13 +67,16 @@ func activeCaptureConfig(in watertestconfig.ConfigVersionDetail) watertestconfig
 		}
 	}
 	timers := map[string]watertestconfig.TimerGroup{}
+	timerGroups := []watertestconfig.TimerGroup{}
 	for key, timer := range in.Timers {
-		if activeKeys[key] || (timer.FieldKey != "" && activeKeys[timer.FieldKey]) {
+		if timer.IsActive && (timer.FieldKey == "" || activeKeys[timer.FieldKey]) {
 			timers[key] = timer
+			timerGroups = append(timerGroups, timer)
 		}
 	}
 	in.Thresholds = thresholds
 	in.Timers = timers
+	in.TimerGroups = timerGroups
 	return in
 }
 
@@ -114,8 +117,14 @@ func (s *Server) handleWaterTestConfigVersionItem(w http.ResponseWriter, r *http
 			}
 			out, err := s.waterTestConfig.UpdateDraftConfig(r.Context(), id, payload)
 			writeWaterTestConfigResult(w, out, err)
+		case http.MethodDelete:
+			if err := s.waterTestConfig.DeleteConfigVersion(r.Context(), id); err != nil {
+				writeWaterTestConfigResult(w, watertestconfig.ConfigVersionDetail{}, err)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
 		default:
-			writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Erlaubt sind GET oder PUT.")
+			writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Erlaubt sind GET, PUT oder DELETE.")
 		}
 		return
 	}

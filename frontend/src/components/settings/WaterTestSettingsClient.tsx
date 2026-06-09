@@ -6,10 +6,14 @@ import type { ReactNode } from "react";
 import {
   activateWaterTestConfigVersion,
   activeWaterTestProfiles,
+  deleteWaterTestConfigVersion,
   duplicateActiveWaterTestConfig,
   fetchWaterTestConfigVersion,
   fetchWaterTestConfigVersions,
+  timerGroupsForField,
+  timerGroupsWithoutField,
   type WaterTestConfigResponse,
+  type WaterTestTimer,
   type WaterTestConfigVersion,
   type WaterTestConfigValidationResult,
   updateWaterTestConfigVersion,
@@ -100,6 +104,23 @@ export function WaterTestSettingsClient() {
     }
   }
 
+  async function deleteSelectedVersion() {
+    if (!selected?.id || selected.is_active) return;
+    const ok = window.confirm(`Version "${selected.name}" löschen? Messungen behalten ihre gespeicherten Snapshots.`);
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await deleteWaterTestConfigVersion(selected.id);
+      setMessage("Version gelöscht.");
+      setSelected(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Version konnte nicht gelöscht werden.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function updateSelected(next: WaterTestConfigResponse) {
     setSelected(next);
     setValidation(null);
@@ -107,6 +128,7 @@ export function WaterTestSettingsClient() {
 
   const activeName = useMemo(() => versions.find((v) => v.is_active)?.name ?? "Keine aktive Version", [versions]);
   const previewTests = useMemo(() => activeWaterTestProfiles(selected?.tests ?? []), [selected]);
+  const timerGroups = useMemo(() => selected?.timer_groups ?? Object.values(selected?.timers ?? {}), [selected]);
 
   return (
     <div className="space-y-5">
@@ -151,6 +173,7 @@ export function WaterTestSettingsClient() {
               <button type="button" disabled={readonly || busy} onClick={saveDraft} className="rounded-button border border-aqua-blue px-3 py-2 text-sm font-semibold text-aqua-deep disabled:opacity-50">Speichern</button>
               <button type="button" disabled={busy} onClick={validateDraft} className="rounded-button border border-aqua-blue px-3 py-2 text-sm font-semibold text-aqua-deep disabled:opacity-50">Validieren</button>
               <button type="button" disabled={!canActivate || busy} onClick={activateDraft} className="rounded-button bg-aqua-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-50" title={STABILITY_HINT}>Aktivieren</button>
+              <button type="button" disabled={selected.is_active || busy} onClick={deleteSelectedVersion} className="rounded-button border border-status-critical/40 px-3 py-2 text-sm font-semibold text-status-critical disabled:opacity-50">Version löschen</button>
             </div>
           </div>
 
@@ -182,7 +205,14 @@ export function WaterTestSettingsClient() {
             </label>
           </div>
 
-          <WaterTestFormPreview tests={previewTests} />
+          <WaterTestFormPreview tests={previewTests} timers={timerGroups} />
+
+          <TimerGroupsEditor
+            timers={timerGroups}
+            tests={selected.tests}
+            readonly={readonly}
+            onChange={(next) => updateSelected({ ...selected, timer_groups: next })}
+          />
 
           <div className="space-y-3">
             {selected.tests.map((test, index) => (
@@ -209,7 +239,19 @@ export function WaterTestSettingsClient() {
   );
 }
 
-function WaterTestFormPreview({ tests }: { tests: NonNullable<WaterTestConfigResponse["tests"]> }) {
+function WaterTestFormPreview({ tests, timers }: { tests: NonNullable<WaterTestConfigResponse["tests"]>; timers: WaterTestTimer[] }) {
+  const activeTimerGroups = timers.filter((timer) => timer.is_active !== false);
+  const timerPreviewGroups = activeTimerGroups.map((timer) => ({
+    groupId: timer.test_key,
+    displayName: timer.label,
+    fieldKey: timer.field_key,
+    steps: timer.steps.map((step) => ({
+      stepId: step.step_id,
+      stepLabel: step.step_label ?? step.label,
+      durationSec: step.duration_seconds,
+    })),
+  }));
+  const standaloneTimers = timerGroupsWithoutField(timerPreviewGroups);
   return (
     <section className="rounded-card border border-aqua-blue/25 bg-aqua-soft/50 p-4">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -217,42 +259,161 @@ function WaterTestFormPreview({ tests }: { tests: NonNullable<WaterTestConfigRes
           <h3 className="text-sm font-semibold text-aqua-deep">Formular-Vorschau</h3>
           <p className="text-xs text-aqua-deep/70">So erscheinen aktive Messwerte nach der Aktivierung im Erfassungsformular.</p>
         </div>
-        <span className="text-xs font-semibold text-aqua-deep/60">{tests.length} aktive Messwerte</span>
+        <span className="text-xs font-semibold text-aqua-deep/60">{tests.length} aktive Messwerte · {activeTimerGroups.length} aktive Timer</span>
       </div>
       <div className="mt-3 space-y-3">
         {tests.length > 0 ? (
-          tests.map((test) => (
-            <div key={test.key} className="rounded-card border border-aqua-deep/10 bg-white p-3">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-aqua-deep">
-                  {test.label}
-                  {test.brand ? <span className="ml-2 text-xs font-normal text-aqua-deep/55">{test.brand}</span> : null}
-                </p>
-                {test.unit ? <span className="text-xs font-medium text-aqua-deep/60">{test.unit}</span> : null}
+          tests.map((test) => {
+            const linkedTimers = timerGroupsForField(timerPreviewGroups, test.key);
+            return (
+              <div key={test.key} className="rounded-card border border-aqua-deep/10 bg-white p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-aqua-deep">
+                    {test.label}
+                    {test.brand ? <span className="ml-2 text-xs font-normal text-aqua-deep/55">{test.brand}</span> : null}
+                  </p>
+                  {test.unit ? <span className="text-xs font-medium text-aqua-deep/60">{test.unit}</span> : null}
+                </div>
+                {test.input_type === "select" && test.values?.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {test.values.map((opt) => (
+                      <span key={`${test.key}-${opt.value}-${opt.display_value ?? opt.label}`} className="rounded-lg border border-aqua-deep/15 bg-aqua-soft px-3 py-2 text-xs font-medium text-aqua-deep">
+                        {opt.display_value ?? opt.label}
+                        {test.unit ? ` ${test.unit}` : ""}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="min-h-[42px] flex-1 rounded-lg border border-aqua-deep/15 bg-white px-3 py-2 text-sm text-aqua-deep/45">Zahl eingeben</div>
+                    {test.unit ? <span className="rounded-lg border border-aqua-deep/10 bg-aqua-soft px-3 py-2 text-xs font-medium text-aqua-deep/80">{test.unit}</span> : null}
+                  </div>
+                )}
+                {linkedTimers.length > 0 ? <TimerPreviewList timers={linkedTimers} /> : null}
               </div>
-              {test.input_type === "select" && test.values?.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {test.values.map((opt) => (
-                    <span key={`${test.key}-${opt.value}-${opt.display_value ?? opt.label}`} className="rounded-lg border border-aqua-deep/15 bg-aqua-soft px-3 py-2 text-xs font-medium text-aqua-deep">
-                      {opt.display_value ?? opt.label}
-                      {test.unit ? ` ${test.unit}` : ""}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="min-h-[42px] flex-1 rounded-lg border border-aqua-deep/15 bg-white px-3 py-2 text-sm text-aqua-deep/45">Zahl eingeben</div>
-                  {test.unit ? <span className="rounded-lg border border-aqua-deep/10 bg-aqua-soft px-3 py-2 text-xs font-medium text-aqua-deep/80">{test.unit}</span> : null}
-                </div>
-              )}
-            </div>
-          ))
+            );
+          })
         ) : (
           <p className="rounded-lg border border-status-warning/30 bg-white px-3 py-2 text-sm text-aqua-deep/75">Keine aktiven Messwerte. Aktiviere mindestens einen Wassertest, bevor du den Entwurf aktivierst.</p>
         )}
+        {standaloneTimers.length > 0 ? (
+          <div className="rounded-card border border-aqua-deep/10 bg-white p-3">
+            <p className="text-sm font-semibold text-aqua-deep">Zusätzliche Timer</p>
+            <TimerPreviewList timers={standaloneTimers} />
+          </div>
+        ) : null}
       </div>
     </section>
   );
+}
+
+function TimerPreviewList({ timers }: { timers: ReturnType<typeof timerGroupsForField> }) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {timers.map((timer) => (
+        <span key={timer.groupId} className="rounded-lg border border-aqua-blue/20 bg-aqua-soft px-3 py-2 text-xs font-medium text-aqua-deep">
+          JBL Timer {timer.displayName}: {timer.steps.map((step) => `${step.stepLabel} ${step.durationSec}s`).join(", ")}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function TimerGroupsEditor({
+  timers,
+  tests,
+  readonly,
+  onChange,
+}: {
+  timers: WaterTestTimer[];
+  tests: NonNullable<WaterTestConfigResponse["tests"]>;
+  readonly: boolean;
+  onChange: (timers: WaterTestTimer[]) => void;
+}) {
+  return (
+    <section className="rounded-card border border-aqua-deep/10 bg-aqua-soft/30 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-aqua-deep">JBL-Wassertest-Timer</h3>
+          <p className="text-xs text-aqua-deep/70">Timer können an ein Messwertfeld gekoppelt oder als zusätzlicher Timer angezeigt werden.</p>
+        </div>
+        <button
+          type="button"
+          disabled={readonly}
+          onClick={() => onChange([...timers, newTimerGroup(timers.length)])}
+          className="rounded-button border border-aqua-blue bg-white px-3 py-2 text-xs font-semibold text-aqua-deep disabled:opacity-50"
+        >
+          Timer hinzufügen
+        </button>
+      </div>
+      <div className="mt-3 space-y-3">
+        {timers.length > 0 ? timers.map((timer, index) => (
+          <TimerGroupEditorCard
+            key={`${timer.test_key}-${index}`}
+            timer={timer}
+            tests={tests}
+            readonly={readonly}
+            onChange={(next) => {
+              const copy = [...timers];
+              copy[index] = next;
+              onChange(copy);
+            }}
+            onDelete={() => onChange(timers.filter((_, i) => i !== index))}
+          />
+        )) : <p className="text-xs text-aqua-deep/60">Keine Timer konfiguriert.</p>}
+      </div>
+    </section>
+  );
+}
+
+function TimerGroupEditorCard({
+  timer,
+  tests,
+  readonly,
+  onChange,
+  onDelete,
+}: {
+  timer: WaterTestTimer;
+  tests: NonNullable<WaterTestConfigResponse["tests"]>;
+  readonly: boolean;
+  onChange: (timer: WaterTestTimer) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <article className="rounded-card border border-aqua-deep/10 bg-white p-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+        <label className="text-sm font-medium text-aqua-deep">Timer-Key<input disabled={readonly} value={timer.test_key} onChange={(e) => onChange({ ...timer, test_key: e.target.value })} className="mt-1 w-full rounded-button border border-aqua-deep/15 px-3 py-2 disabled:bg-aqua-deep/5" /></label>
+        <label className="text-sm font-medium text-aqua-deep">Name<input disabled={readonly} value={timer.label} onChange={(e) => onChange({ ...timer, label: e.target.value })} className="mt-1 w-full rounded-button border border-aqua-deep/15 px-3 py-2 disabled:bg-aqua-deep/5" /></label>
+        <label className="text-sm font-medium text-aqua-deep">Zuordnung<select disabled={readonly} value={timer.field_key ?? ""} onChange={(e) => onChange({ ...timer, field_key: e.target.value || undefined })} className="mt-1 w-full rounded-button border border-aqua-deep/15 px-3 py-2 disabled:bg-aqua-deep/5"><option value="">Zusätzlicher Timer</option>{tests.map((test) => <option key={test.key} value={test.key}>{test.label}</option>)}</select></label>
+        <label className="flex items-center gap-2 pt-7 text-sm font-medium text-aqua-deep"><input disabled={readonly} type="checkbox" checked={timer.is_active ?? true} onChange={(e) => onChange({ ...timer, is_active: e.target.checked })} /> aktiv</label>
+      </div>
+      <EditableList title="Timer-Schritte" disabled={readonly} addLabel="Schritt hinzufügen" items={timer.steps ?? []} onAdd={() => onChange({ ...timer, steps: [...(timer.steps ?? []), { step_id: `${timer.test_key}_${(timer.steps?.length ?? 0) + 1}`, step_label: "Einwirkzeit", label: "Einwirkzeit", duration_seconds: 60, step_order: timer.steps?.length ?? 0 }] })} render={(step, i) => (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <input aria-label="Timer-Schritt" disabled={readonly} value={step.step_label ?? step.label ?? ""} onChange={(e) => updateStep(i, { ...step, step_label: e.target.value, label: e.target.value })} className="rounded-button border border-aqua-deep/15 px-3 py-2 disabled:bg-aqua-deep/5" />
+          <input aria-label="Sekunden" disabled={readonly} type="number" value={step.duration_seconds} onChange={(e) => updateStep(i, { ...step, duration_seconds: Number(e.target.value) })} className="rounded-button border border-aqua-deep/15 px-3 py-2 disabled:bg-aqua-deep/5" />
+          <button type="button" disabled={readonly} onClick={() => onChange({ ...timer, steps: (timer.steps ?? []).filter((_, idx) => idx !== i) })} className="rounded-button border px-3 text-sm disabled:opacity-50">Löschen</button>
+        </div>
+      )} />
+      <button type="button" disabled={readonly} onClick={onDelete} className="mt-3 rounded-button border border-status-critical/40 px-3 py-2 text-xs font-semibold text-status-critical disabled:opacity-50">Timer löschen</button>
+    </article>
+  );
+
+  function updateStep(i: number, next: NonNullable<WaterTestTimer["steps"]>[number]) {
+    const steps = [...(timer.steps ?? [])];
+    steps[i] = next;
+    onChange({ ...timer, steps });
+  }
+}
+
+function newTimerGroup(index: number): WaterTestTimer {
+  const n = index + 1;
+  return {
+    test_key: `timer_${n}`,
+    label: `Timer ${n}`,
+    is_active: false,
+    sort_order: 100 + index,
+    steps: [{ step_id: `timer_${n}`, step_label: "Einwirkzeit", label: "Einwirkzeit", duration_seconds: 60, step_order: 0 }],
+  };
 }
 
 function TestEditorCard({

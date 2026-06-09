@@ -58,4 +58,34 @@ describe("WaterTestMeasurementCard", () => {
     expect(badge).toHaveAttribute("data-status", "unknown");
     expect(badge).toHaveTextContent(/Nicht bewertet/);
   });
+
+  it("shows the saved config version for evaluated measurements", () => {
+    const test: WaterTest = {
+      id: 2,
+      tank_id: 1,
+      symptoms: [],
+      created_at: "2026-03-01T08:00:00Z",
+      water_quality_status: "green",
+      config_version_name: "JBL Freshwater Default v1",
+    };
+
+    render(<WaterTestMeasurementCard tankId={1} test={test} />);
+
+    expect(screen.getByText(/Bewertet mit: JBL Freshwater Default v1/)).toBeInTheDocument();
+  });
+
+  it("labels legacy measurements as historical instead of not evaluated", () => {
+    const test: WaterTest = {
+      id: 3,
+      tank_id: 1,
+      symptoms: [],
+      created_at: "2026-03-01T08:00:00Z",
+      threshold_source: "legacy_missing_snapshot",
+    };
+
+    render(<WaterTestMeasurementCard tankId={1} test={test} />);
+
+    expect(screen.getByTestId("water-quality-badge")).toHaveTextContent(/Historisch/);
+    expect(screen.queryByText(/Nicht bewertet/)).not.toBeInTheDocument();
+  });
 });

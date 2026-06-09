@@ -104,6 +104,47 @@ func TestDraftCanBeUpdatedAndActivated(t *testing.T) {
 	}
 }
 
+func TestDraftCanUpdateTimerGroups(t *testing.T) {
+	svc, ctx := setupService(t)
+	draft, err := svc.CreateDraftFromActive(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(draft.TimerGroups) == 0 {
+		t.Fatal("expected timer groups")
+	}
+	draft.TimerGroups[0].Label = "Nitrit Timer angepasst"
+	draft.TimerGroups[0].IsActive = false
+	updated, err := svc.UpdateDraftConfig(ctx, draft.ID, ConfigUpdatePayload{Tests: draft.Tests, TimerGroups: draft.TimerGroups})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.TimerGroups[0].Label != "Nitrit Timer angepasst" || updated.TimerGroups[0].IsActive {
+		t.Fatalf("timer group not updated: %+v", updated.TimerGroups[0])
+	}
+}
+
+func TestDraftVersionCanBeDeleted(t *testing.T) {
+	svc, ctx := setupService(t)
+	active, err := svc.GetActiveConfig(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	draft, err := svc.CreateDraftFromActive(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.DeleteConfigVersion(ctx, draft.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.GetConfigVersion(ctx, draft.ID); err == nil {
+		t.Fatal("expected deleted draft to be missing")
+	}
+	if err := svc.DeleteConfigVersion(ctx, active.ID); err == nil {
+		t.Fatal("expected active version delete to be rejected")
+	}
+}
+
 func TestDraftCanRemoveUnmeasuredTestWithoutChangingOldVersion(t *testing.T) {
 	svc, ctx := setupService(t)
 	oldActive, err := svc.GetActiveConfig(ctx)

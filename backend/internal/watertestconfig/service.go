@@ -64,7 +64,7 @@ VALUES (?, ?, 0, 1, ?)`, name, source.Description, source.CreatedBy)
 	if err != nil {
 		return ConfigVersionDetail{}, err
 	}
-	if err := s.replaceVersionRows(ctx, tx, newID, source.Tests); err != nil {
+	if err := s.replaceVersionRows(ctx, tx, newID, source.Tests, source.TimerGroups); err != nil {
 		return ConfigVersionDetail{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -100,6 +100,11 @@ func (s *Service) UpdateDraftConfig(ctx context.Context, versionID int64, payloa
 		return ConfigVersionDetail{}, validationError{result: res}
 	}
 	detail := ConfigVersionDetail{ConfigVersion: version, Tests: payload.Tests}
+	timerGroups := payload.TimerGroups
+	if timerGroups == nil {
+		timerGroups = current.TimerGroups
+	}
+	detail.TimerGroups = timerGroups
 	if res := ValidateDetail(detail); !res.Valid {
 		return ConfigVersionDetail{}, validationError{result: res}
 	}
@@ -124,7 +129,7 @@ func (s *Service) UpdateDraftConfig(ctx context.Context, versionID int64, payloa
 			return ConfigVersionDetail{}, err
 		}
 	}
-	if err := s.replaceVersionRows(ctx, tx, versionID, payload.Tests); err != nil {
+	if err := s.replaceVersionRows(ctx, tx, versionID, payload.Tests, timerGroups); err != nil {
 		return ConfigVersionDetail{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE water_test_config_versions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`, versionID); err != nil {
@@ -134,6 +139,28 @@ func (s *Service) UpdateDraftConfig(ctx context.Context, versionID int64, payloa
 		return ConfigVersionDetail{}, err
 	}
 	return s.GetConfigVersion(ctx, versionID)
+}
+
+func (s *Service) DeleteConfigVersion(ctx context.Context, versionID int64) error {
+	version, err := s.repo.getVersion(ctx, versionID)
+	if err != nil {
+		return err
+	}
+	if version.IsActive {
+		return fmt.Errorf("readonly active config version")
+	}
+	res, err := s.repo.db.ExecContext(ctx, `DELETE FROM water_test_config_versions WHERE id = ?`, versionID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func validateRemovedTestsCanDelete(current []TestConfig, next []TestConfig) ValidationResult {
@@ -203,8 +230,11 @@ WHERE id = ?`, s.now().UTC().Format(time.RFC3339), versionID); err != nil {
 	return s.GetConfigVersion(ctx, versionID)
 }
 
-func (s *Service) replaceVersionRows(ctx context.Context, tx *sql.Tx, versionID int64, tests []TestConfig) error {
-	for _, table := range []string{"water_test_value_options", "water_test_thresholds", "water_test_timers", "water_test_config_tests"} {
+func (s *Service) replaceVersionRows(ctx context.Context, tx *sql.Tx, versionID int64, tests []TestConfig, timerGroups []TimerGroup) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM water_test_timer_steps WHERE timer_group_id IN (SELECT id FROM water_test_timer_groups WHERE config_version_id = ?)`, versionID); err != nil {
+		return err
+	}
+	for _, table := range []string{"water_test_value_options", "water_test_thresholds", "water_test_timers", "water_test_timer_groups", "water_test_config_tests"} {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM `+table+` WHERE config_version_id = ?`, versionID); err != nil {
 			return err
 		}
@@ -245,19 +275,89 @@ VALUES (?, ?, ?, ?, ?, ?, ?)`, versionID, id, thresholdMin(th), thresholdMax(th)
 				return err
 			}
 		}
-		for _, timer := range test.Timers {
-			label := strings.TrimSpace(timer.StepLabel)
-			if label == "" {
-				label = timer.Label
-			}
-			if _, err := tx.ExecContext(ctx, `
-INSERT INTO water_test_timers (config_version_id, test_definition_id, step_label, duration_seconds, step_order)
-VALUES (?, ?, ?, ?, ?)`, versionID, id, label, timer.DurationSeconds, timer.StepOrder); err != nil {
-				return err
-			}
+	}
+	if len(timerGroups) == 0 {
+		timerGroups = timerGroupsFromLegacyTests(tests)
+	}
+	for _, group := range timerGroups {
+		if err := s.insertTimerGroup(ctx, tx, versionID, group); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func (s *Service) insertTimerGroup(ctx context.Context, tx *sql.Tx, versionID int64, group TimerGroup) error {
+	key := strings.TrimSpace(group.TestKey)
+	if key == "" {
+		key = timerKeyFromLabel(group.Label)
+	}
+	label := strings.TrimSpace(group.Label)
+	if label == "" {
+		label = key
+	}
+	res, err := tx.ExecContext(ctx, `
+INSERT INTO water_test_timer_groups (config_version_id, timer_key, label, field_key, is_active, sort_order)
+VALUES (?, ?, ?, ?, ?, ?)`, versionID, key, label, nullableString(group.FieldKey), group.IsActive, group.SortOrder)
+	if err != nil {
+		return err
+	}
+	groupID, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	for _, timer := range group.Steps {
+		stepLabel := strings.TrimSpace(timer.StepLabel)
+		if stepLabel == "" {
+			stepLabel = timer.Label
+		}
+		if stepLabel == "" {
+			stepLabel = "Einwirkzeit"
+		}
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO water_test_timer_steps (timer_group_id, step_label, duration_seconds, step_order)
+VALUES (?, ?, ?, ?)`, groupID, stepLabel, timer.DurationSeconds, timer.StepOrder); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func timerGroupsFromLegacyTests(tests []TestConfig) []TimerGroup {
+	out := []TimerGroup{}
+	for _, test := range tests {
+		if len(test.Timers) == 0 {
+			continue
+		}
+		out = append(out, TimerGroup{
+			TestKey:   test.Key,
+			Label:     test.Label,
+			FieldKey:  fieldKeyForTimer(test.Key),
+			IsActive:  test.IsActive,
+			SortOrder: test.SortOrder,
+			Steps:     test.Timers,
+		})
+	}
+	return out
+}
+
+func timerKeyFromLabel(label string) string {
+	key := strings.ToLower(strings.TrimSpace(label))
+	replacer := strings.NewReplacer(" ", "_", "/", "_", "-", "_", "–", "_", "₂", "2", "₄", "4", "₃", "3")
+	key = replacer.Replace(key)
+	key = strings.Trim(key, "_")
+	if key == "" {
+		return "timer"
+	}
+	return key
+}
+
+func nullableString(value string) any {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return value
 }
 
 func (s *Service) upsertDefinition(ctx context.Context, tx *sql.Tx, test TestConfig) (int64, error) {

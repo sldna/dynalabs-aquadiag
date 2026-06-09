@@ -217,13 +217,30 @@ Antwort `200`:
       "test_key": "no2",
       "label": "NO₂",
       "field_key": "nitrite_no2",
+      "is_active": true,
       "steps": [
         { "step_id": "no2", "label": "Einwirkzeit", "duration_seconds": 300 }
       ]
     }
-  }
+  },
+  "timer_groups": [
+    {
+      "test_key": "no2",
+      "label": "NO₂",
+      "field_key": "nitrite_no2",
+      "is_active": true,
+      "sort_order": 20,
+      "steps": [
+        { "step_id": "no2", "label": "Einwirkzeit", "duration_seconds": 300 }
+      ]
+    }
+  ]
 }
 ```
+
+`tests` enthält nur aktive Messwertfelder. `timer_groups` enthält nur aktive
+Timer-Gruppen, deren `field_key` entweder leer ist (zusätzlicher Timer) oder auf
+ein aktives Messwertfeld zeigt.
 
 ### Wassertest-Konfigurationsverwaltung
 
@@ -232,6 +249,7 @@ Antwort `200`:
 - `POST /v1/water-test-config/versions/duplicate-active`
 - `POST /v1/water-test-config/versions/{id}/duplicate`
 - `PUT /v1/water-test-config/versions/{id}`
+- `DELETE /v1/water-test-config/versions/{id}`
 - `POST /v1/water-test-config/versions/{id}/validate`
 - `POST /v1/water-test-config/versions/{id}/activate`
 
@@ -239,6 +257,8 @@ Bearbeiten ist nur für Draft-Versionen erlaubt. Aktive und nicht-Draft-Versione
 sind schreibgeschützt und müssen dupliziert werden. Aktivierung ist
 transaktional: erst validieren, dann alle anderen Versionen deaktivieren,
 Zielversion aktivieren, `is_draft=false` setzen und `activated_at` schreiben.
+`DELETE` ist für nicht-aktive Versionen erlaubt; Messungen behalten ihre
+gespeicherten Snapshots und `config_version_name`.
 
 **Wichtig:** Änderungen gelten nur für neue Messungen und neue Analysen. Alte
 Messungen werden nicht automatisch neu bewertet. Für historische Anzeige gilt
