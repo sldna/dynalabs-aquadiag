@@ -6,6 +6,7 @@ import {
   type WaterTestConfigResponse,
   type WaterTestTimerGroup,
   fetchWaterTestConfig,
+  formWaterTestConfig,
   timerGroupsFromConfig,
 } from "@/lib/water-test-config";
 
@@ -28,14 +29,15 @@ export function useWaterTestConfig(): WaterTestConfigState {
       try {
         const config = await fetchWaterTestConfig();
         if (cancelled) return;
-        if (!config.tests?.length) {
+        const formConfig = formWaterTestConfig(config);
+        if (!formConfig.tests?.length) {
           setState({ status: "empty" });
           return;
         }
         setState({
           status: "ready",
-          config,
-          timerGroups: timerGroupsFromConfig(config.timers ?? {}),
+          config: formConfig,
+          timerGroups: timerGroupsFromConfig(formConfig.timers ?? {}, formConfig.tests.map((test) => test.key)),
         });
       } catch (err) {
         if (cancelled) return;

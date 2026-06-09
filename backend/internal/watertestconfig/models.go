@@ -28,6 +28,8 @@ type TestConfig struct {
 	InputType  string        `json:"input_type"`
 	SortOrder  int           `json:"sort_order"`
 	IsActive   bool          `json:"is_active"`
+	CanDelete  bool          `json:"can_delete"`
+	DeleteNote string        `json:"delete_blocked_reason,omitempty"`
 	Values     []ValueOption `json:"values"`
 	Thresholds []Threshold   `json:"thresholds"`
 	Timers     []TimerStep   `json:"timers"`

@@ -17,6 +17,8 @@ export type WaterTestProfile = {
   input_type: "number" | "select" | string;
   sort_order?: number;
   is_active?: boolean;
+  can_delete?: boolean;
+  delete_blocked_reason?: string;
   values: WaterTestValueOption[];
   thresholds?: WaterTestThresholdRange[];
   timers?: WaterTestVersionTimerStep[];
@@ -162,8 +164,37 @@ export type WaterTestTimerGroup = {
   steps: TimerStepConfig[];
 };
 
-export function timerGroupsFromConfig(timers: Record<string, WaterTestTimer>): WaterTestTimerGroup[] {
-  return Object.values(timers).map((t) => ({
+export function activeWaterTestProfiles(tests: WaterTestProfile[]): WaterTestProfile[] {
+  return [...tests]
+    .filter((test) => test.is_active !== false)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+}
+
+export function formWaterTestConfig(config: WaterTestConfigResponse): WaterTestConfigResponse {
+  const tests = activeWaterTestProfiles(config.tests ?? []);
+  const activeKeys = new Set(tests.map((test) => test.key));
+  return {
+    ...config,
+    tests,
+    thresholds: Object.fromEntries(
+      Object.entries(config.thresholds ?? {}).filter(([key]) => activeKeys.has(key)),
+    ),
+    timers: Object.fromEntries(
+      Object.entries(config.timers ?? {}).filter(([, timer]) => timerBelongsToActiveTest(timer, activeKeys)),
+    ),
+  };
+}
+
+function timerBelongsToActiveTest(timer: WaterTestTimer, activeKeys: Set<string>): boolean {
+  return activeKeys.has(timer.test_key) || Boolean(timer.field_key && activeKeys.has(timer.field_key));
+}
+
+export function timerGroupsFromConfig(
+  timers: Record<string, WaterTestTimer>,
+  activeKeys?: Iterable<string>,
+): WaterTestTimerGroup[] {
+  const activeKeySet = activeKeys ? new Set(activeKeys) : null;
+  return Object.values(timers).filter((t) => !activeKeySet || timerBelongsToActiveTest(t, activeKeySet)).map((t) => ({
     groupId: t.test_key,
     displayName: t.label,
     fieldKey: t.field_key,

@@ -49,6 +49,12 @@ describe("QuickWaterTestForm", () => {
     expect(screen.getByRole("button", { name: /0,5 mg\/l/i })).toBeInTheDocument();
   });
 
+  it("blendet deaktivierte Messwerte aus", async () => {
+    render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
+    expect(await screen.findByText(/Nitrat \(NO₃\)/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Kupfer \(Cu\)/i)).not.toBeInTheDocument();
+  });
+
   it("zeigt NO3 0.5 als unauffällig nicht kritisch", async () => {
     render(<QuickWaterTestForm tankId={7} tankName="Wohnzimmer" />);
     await screen.findByText(/Nitrat \(NO₃\)/i);

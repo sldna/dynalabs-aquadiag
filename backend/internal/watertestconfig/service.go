@@ -92,6 +92,13 @@ func (s *Service) UpdateDraftConfig(ctx context.Context, versionID int64, payloa
 	if !version.IsDraft || version.IsActive {
 		return ConfigVersionDetail{}, fmt.Errorf("readonly config version")
 	}
+	current, err := s.repo.getDetail(ctx, versionID)
+	if err != nil {
+		return ConfigVersionDetail{}, err
+	}
+	if res := validateRemovedTestsCanDelete(current.Tests, payload.Tests); !res.Valid {
+		return ConfigVersionDetail{}, validationError{result: res}
+	}
 	detail := ConfigVersionDetail{ConfigVersion: version, Tests: payload.Tests}
 	if res := ValidateDetail(detail); !res.Valid {
 		return ConfigVersionDetail{}, validationError{result: res}
@@ -127,6 +134,26 @@ func (s *Service) UpdateDraftConfig(ctx context.Context, versionID int64, payloa
 		return ConfigVersionDetail{}, err
 	}
 	return s.GetConfigVersion(ctx, versionID)
+}
+
+func validateRemovedTestsCanDelete(current []TestConfig, next []TestConfig) ValidationResult {
+	nextKeys := map[string]bool{}
+	for _, test := range next {
+		nextKeys[strings.TrimSpace(test.Key)] = true
+	}
+	var issues []ValidationIssue
+	for _, test := range current {
+		key := strings.TrimSpace(test.Key)
+		if key == "" || nextKeys[key] || test.CanDelete {
+			continue
+		}
+		message := test.DeleteNote
+		if message == "" {
+			message = "Dieser Wassertest ist bereits mit Messungen verknüpft."
+		}
+		issues = appendIssue(issues, "tests."+key, "linked_measurements", message)
+	}
+	return ValidationResult{Valid: len(issues) == 0, Errors: issues}
 }
 
 func (s *Service) ValidateConfigVersion(ctx context.Context, versionID int64) (ValidationResult, error) {
@@ -177,7 +204,7 @@ WHERE id = ?`, s.now().UTC().Format(time.RFC3339), versionID); err != nil {
 }
 
 func (s *Service) replaceVersionRows(ctx context.Context, tx *sql.Tx, versionID int64, tests []TestConfig) error {
-	for _, table := range []string{"water_test_value_options", "water_test_thresholds", "water_test_timers"} {
+	for _, table := range []string{"water_test_value_options", "water_test_thresholds", "water_test_timers", "water_test_config_tests"} {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM `+table+` WHERE config_version_id = ?`, versionID); err != nil {
 			return err
 		}
@@ -185,6 +212,19 @@ func (s *Service) replaceVersionRows(ctx context.Context, tx *sql.Tx, versionID 
 	for _, test := range tests {
 		id, err := s.upsertDefinition(ctx, tx, test)
 		if err != nil {
+			return err
+		}
+		brand := strings.TrimSpace(test.Brand)
+		if brand == "" {
+			brand = "JBL"
+		}
+		inputType := strings.TrimSpace(test.InputType)
+		if inputType == "" {
+			inputType = "select"
+		}
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO water_test_config_tests (config_version_id, test_definition_id, label, brand, unit, input_type, sort_order, is_active)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, versionID, id, strings.TrimSpace(test.Label), brand, strings.TrimSpace(test.Unit), inputType, test.SortOrder, test.IsActive); err != nil {
 			return err
 		}
 		for _, opt := range test.Values {
@@ -221,23 +261,19 @@ VALUES (?, ?, ?, ?, ?)`, versionID, id, label, timer.DurationSeconds, timer.Step
 }
 
 func (s *Service) upsertDefinition(ctx context.Context, tx *sql.Tx, test TestConfig) (int64, error) {
-	if test.Brand == "" {
-		test.Brand = "JBL"
+	brand := strings.TrimSpace(test.Brand)
+	if brand == "" {
+		brand = "JBL"
 	}
-	if test.InputType == "" {
-		test.InputType = "select"
+	inputType := strings.TrimSpace(test.InputType)
+	if inputType == "" {
+		inputType = "select"
 	}
 	_, err := tx.ExecContext(ctx, `
 INSERT INTO water_test_definitions (test_key, label, brand, unit, input_type, sort_order, is_active)
 VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(test_key) DO UPDATE SET
-  label = excluded.label,
-  brand = excluded.brand,
-  unit = excluded.unit,
-  input_type = excluded.input_type,
-  sort_order = excluded.sort_order,
-  is_active = excluded.is_active,
-  updated_at = CURRENT_TIMESTAMP`, strings.TrimSpace(test.Key), strings.TrimSpace(test.Label), test.Brand, test.Unit, test.InputType, test.SortOrder, test.IsActive)
+  updated_at = CURRENT_TIMESTAMP`, strings.TrimSpace(test.Key), strings.TrimSpace(test.Label), brand, strings.TrimSpace(test.Unit), inputType, test.SortOrder, test.IsActive)
 	if err != nil {
 		return 0, err
 	}
