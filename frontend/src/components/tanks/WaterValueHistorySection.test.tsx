@@ -38,14 +38,14 @@ describe("WaterValueHistorySection", () => {
       {
         id: 10,
         tank_id: 2,
-        created_at: "2026-05-08T12:00:00Z",
+        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
         ph: 7.0,
         symptoms: [],
       },
       {
         id: 11,
         tank_id: 2,
-        created_at: "2026-05-10T12:00:00Z",
+        created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
         ph: 7.2,
         symptoms: [],
       },
