@@ -65,7 +65,7 @@ export function WaterTestSettingsClient() {
     if (!selected) return;
     setBusy(true);
     try {
-      const updated = await updateWaterTestConfigVersion(selected);
+      const updated = await persistSelectedDraft();
       setSelected(updated);
       setValidation(null);
       setMessage("Entwurf gespeichert.");
@@ -80,7 +80,9 @@ export function WaterTestSettingsClient() {
     if (!selected?.id) return;
     setBusy(true);
     try {
-      const result = await validateWaterTestConfigVersion(selected.id);
+      const updated = readonly ? selected : await persistSelectedDraft();
+      setSelected(updated);
+      const result = await validateWaterTestConfigVersion(updated.id ?? selected.id);
       setValidation(result);
       setMessage(result.valid ? "Validierung erfolgreich." : "Validierung enthält Fehler.");
     } catch (err) {
@@ -94,7 +96,8 @@ export function WaterTestSettingsClient() {
     if (!selected?.id || !canActivate) return;
     setBusy(true);
     try {
-      const active = await activateWaterTestConfigVersion(selected.id);
+      const updated = readonly ? selected : await persistSelectedDraft();
+      const active = await activateWaterTestConfigVersion(updated.id ?? selected.id);
       setMessage(`Aktiviert. ${STABILITY_HINT}`);
       await load(active.id);
     } catch (err) {
@@ -124,6 +127,11 @@ export function WaterTestSettingsClient() {
   function updateSelected(next: WaterTestConfigResponse) {
     setSelected(next);
     setValidation(null);
+  }
+
+  function persistSelectedDraft(): Promise<WaterTestConfigResponse> {
+    if (!selected) throw new Error("Keine Version ausgewählt.");
+    return updateWaterTestConfigVersion(selected);
   }
 
   const activeName = useMemo(() => versions.find((v) => v.is_active)?.name ?? "Keine aktive Version", [versions]);
