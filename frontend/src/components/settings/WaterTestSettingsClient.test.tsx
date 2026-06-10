@@ -26,7 +26,7 @@ const activeVersion = {
       delete_blocked_reason: "Dieser Wassertest ist bereits mit Messungen verknüpft.",
       values: [{ value: 0.5, label: "0,5", display_value: "0,5", sort_order: 1 }],
       thresholds: [{ min_value: 0, max_value: 30, status: "ok", message: "Nitrat liegt im üblichen Bereich.", sort_order: 1 }],
-      timers: [{ step_label: "Einwirkzeit", label: "Einwirkzeit", duration_seconds: 300, step_order: 0 }],
+      timers: [],
     },
     {
       id: 2,
@@ -44,7 +44,40 @@ const activeVersion = {
     },
   ],
   thresholds: {},
-  timers: {},
+  timers: {
+    no3: {
+      test_key: "no3",
+      label: "NO₃",
+      field_key: "nitrate_no3",
+      is_active: true,
+      sort_order: 1,
+      steps: [{ step_id: "no3", step_label: "Einwirkzeit", label: "Einwirkzeit", duration_seconds: 300, step_order: 0 }],
+    },
+    ph_74_90: {
+      test_key: "ph_74_90",
+      label: "pH 7,4–9,0",
+      is_active: false,
+      sort_order: 2,
+      steps: [{ step_id: "ph_74_90", step_label: "Einwirkzeit", label: "Einwirkzeit", duration_seconds: 180, step_order: 0 }],
+    },
+  },
+  timer_groups: [
+    {
+      test_key: "no3",
+      label: "NO₃",
+      field_key: "nitrate_no3",
+      is_active: true,
+      sort_order: 1,
+      steps: [{ step_id: "no3", step_label: "Einwirkzeit", label: "Einwirkzeit", duration_seconds: 300, step_order: 0 }],
+    },
+    {
+      test_key: "ph_74_90",
+      label: "pH 7,4–9,0",
+      is_active: false,
+      sort_order: 2,
+      steps: [{ step_id: "ph_74_90", step_label: "Einwirkzeit", label: "Einwirkzeit", duration_seconds: 180, step_order: 0 }],
+    },
+  ],
 };
 
 const draftVersion = { ...activeVersion, id: 2, name: "JBL Freshwater Default v1 Entwurf", is_active: false, is_draft: true };
@@ -72,6 +105,10 @@ describe("WaterTestSettingsClient", () => {
           selected = { ...draftVersion, ...selected, id: 2, is_active: false, is_draft: true };
           return json(selected);
         }
+        if (url.endsWith("/v1/water-test-config/versions/2") && method === "DELETE") {
+          selected = activeVersion;
+          return Promise.resolve(new Response(null, { status: 204 }));
+        }
         if (url.endsWith("/v1/water-test-config/versions/2/validate") && method === "POST") {
           return json({ valid: true, errors: [] });
         }
@@ -98,9 +135,11 @@ describe("WaterTestSettingsClient", () => {
     expect(await screen.findByText("Entwurf ist bearbeitbar.")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Versionsname"), { target: { value: "Meine JBL-Skala" } });
+    fireEvent.change(screen.getByDisplayValue("NO₃"), { target: { value: "Nitrat Timer" } });
+    expect(screen.getByText("2 aktive Messwerte · 1 aktive Timer")).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "Wassertest löschen" })[1]);
     expect(screen.queryByText("Phosphat (PO₄)")).not.toBeInTheDocument();
-    expect(screen.getByText("1 aktive Messwerte")).toBeInTheDocument();
+    expect(screen.getByText("1 aktive Messwerte · 1 aktive Timer")).toBeInTheDocument();
 
     fireEvent.change(screen.getAllByLabelText("Nachricht")[0], { target: { value: "Nitrat bleibt ok." } });
     fireEvent.change(screen.getAllByLabelText("Sekunden")[0], { target: { value: "600" } });
@@ -114,6 +153,15 @@ describe("WaterTestSettingsClient", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Aktivieren" })).not.toBeDisabled());
     fireEvent.click(screen.getByRole("button", { name: "Aktivieren" }));
     expect(await screen.findByText(/Aktiviert\./)).toBeInTheDocument();
+  });
+
+  it("löscht nicht aktive Versionen", async () => {
+    render(<WaterTestSettingsClient />);
+    expect((await screen.findAllByText("JBL Freshwater Default v1")).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Aktive Version duplizieren" }));
+    expect(await screen.findByText("Entwurf ist bearbeitbar.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Version löschen" }));
+    expect(await screen.findByText("Version gelöscht.")).toBeInTheDocument();
   });
 });
 

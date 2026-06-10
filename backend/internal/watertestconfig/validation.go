@@ -49,11 +49,39 @@ func ValidateDetail(detail ConfigVersionDetail) ValidationResult {
 			}
 		}
 	}
+	issues = append(issues, validateTimerGroups(detail.TimerGroups)...)
 	if activeTestCount == 0 {
 		issues = appendIssue(issues, "tests", "required", "Mindestens ein Wassertest muss aktiv sein.")
 	}
 
 	return ValidationResult{Valid: len(issues) == 0, Errors: issues}
+}
+
+func validateTimerGroups(groups []TimerGroup) []ValidationIssue {
+	var issues []ValidationIssue
+	seen := map[string]bool{}
+	for gi, group := range groups {
+		prefix := fmt.Sprintf("timer_groups[%d]", gi)
+		key := strings.TrimSpace(group.TestKey)
+		if key == "" {
+			issues = appendIssue(issues, prefix+".test_key", "required", "timer_key darf nicht leer sein.")
+		} else if seen[key] {
+			issues = appendIssue(issues, prefix+".test_key", "duplicate", "timer_key ist doppelt.")
+		}
+		seen[key] = true
+		if strings.TrimSpace(group.Label) == "" {
+			issues = appendIssue(issues, prefix+".label", "required", "label darf nicht leer sein.")
+		}
+		for si, step := range group.Steps {
+			if strings.TrimSpace(step.StepLabel) == "" && strings.TrimSpace(step.Label) == "" {
+				issues = appendIssue(issues, fmt.Sprintf("%s.steps[%d].step_label", prefix, si), "required", "step_label darf nicht leer sein.")
+			}
+			if step.DurationSeconds <= 0 {
+				issues = appendIssue(issues, fmt.Sprintf("%s.steps[%d].duration_seconds", prefix, si), "invalid_range", "duration_seconds muss größer als 0 sein.")
+			}
+		}
+	}
+	return issues
 }
 
 func validateThresholdsForTest(prefix string, thresholds []Threshold) []ValidationIssue {

@@ -59,9 +59,12 @@ export type WaterTestVersionTimerStep = {
 };
 
 export type WaterTestTimer = {
+  id?: number;
   test_key: string;
   label: string;
   field_key?: string;
+  is_active?: boolean;
+  sort_order?: number;
   steps: WaterTestTimerStep[];
 };
 
@@ -77,6 +80,7 @@ export type WaterTestConfigResponse = {
   tests: WaterTestProfile[];
   thresholds: Record<string, WaterTestThreshold>;
   timers: Record<string, WaterTestTimer>;
+  timer_groups?: WaterTestTimer[];
 };
 
 export type WaterTestConfigVersion = {
@@ -182,11 +186,16 @@ export function formWaterTestConfig(config: WaterTestConfigResponse): WaterTestC
     timers: Object.fromEntries(
       Object.entries(config.timers ?? {}).filter(([, timer]) => timerBelongsToActiveTest(timer, activeKeys)),
     ),
+    timer_groups: (config.timer_groups ?? Object.values(config.timers ?? {})).filter((timer) =>
+      timerBelongsToActiveTest(timer, activeKeys),
+    ),
   };
 }
 
 function timerBelongsToActiveTest(timer: WaterTestTimer, activeKeys: Set<string>): boolean {
-  return activeKeys.has(timer.test_key) || Boolean(timer.field_key && activeKeys.has(timer.field_key));
+  if (timer.is_active === false) return false;
+  if (!timer.field_key) return true;
+  return activeKeys.has(timer.field_key);
 }
 
 export function timerGroupsFromConfig(
@@ -194,16 +203,19 @@ export function timerGroupsFromConfig(
   activeKeys?: Iterable<string>,
 ): WaterTestTimerGroup[] {
   const activeKeySet = activeKeys ? new Set(activeKeys) : null;
-  return Object.values(timers).filter((t) => !activeKeySet || timerBelongsToActiveTest(t, activeKeySet)).map((t) => ({
-    groupId: t.test_key,
-    displayName: t.label,
-    fieldKey: t.field_key,
-    steps: t.steps.map((s) => ({
-      stepId: s.step_id,
-      stepLabel: s.step_label ?? s.label,
-      durationSec: s.duration_seconds,
-    })),
-  }));
+  return Object.values(timers)
+    .filter((t) => !activeKeySet || timerBelongsToActiveTest(t, activeKeySet))
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((t) => ({
+      groupId: t.test_key,
+      displayName: t.label,
+      fieldKey: t.field_key,
+      steps: t.steps.map((s) => ({
+        stepId: s.step_id,
+        stepLabel: s.step_label ?? s.label,
+        durationSec: s.duration_seconds,
+      })),
+    }));
 }
 
 export type TimerId = string;
@@ -296,8 +308,17 @@ export function duplicateActiveWaterTestConfig(): Promise<WaterTestConfigRespons
 export function updateWaterTestConfigVersion(version: WaterTestConfigResponse): Promise<WaterTestConfigResponse> {
   return fetchJSON<WaterTestConfigResponse>(`/v1/water-test-config/versions/${version.id}`, {
     method: "PUT",
-    body: JSON.stringify({ name: version.name, description: version.description, tests: version.tests }),
+    body: JSON.stringify({
+      name: version.name,
+      description: version.description,
+      tests: version.tests,
+      timer_groups: version.timer_groups ?? Object.values(version.timers ?? {}),
+    }),
   });
+}
+
+export function deleteWaterTestConfigVersion(id: number): Promise<void> {
+  return fetchJSON<void>(`/v1/water-test-config/versions/${id}`, { method: "DELETE" });
 }
 
 export function validateWaterTestConfigVersion(id: number): Promise<WaterTestConfigValidationResult> {

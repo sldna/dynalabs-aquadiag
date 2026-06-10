@@ -31,7 +31,7 @@ VALUES ('JBL Freshwater Default v1', 'Initiale AquaDiag-JBL-Konfiguration aus de
 	if err != nil {
 		return err
 	}
-	if err := s.replaceVersionRows(ctx, tx, versionID, defaultJBLTests()); err != nil {
+	if err := s.replaceVersionRows(ctx, tx, versionID, defaultJBLTests(), defaultJBLTimerGroups()); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -63,17 +63,22 @@ func defaultJBLTests() []TestConfig {
 		{Key: "phosphate_po4", Label: "Phosphat (PO₄)", Brand: "JBL", Unit: "mg/l", InputType: "number", SortOrder: 8, IsActive: true},
 		{Key: "iron_fe", Label: "Eisen (Fe)", Brand: "JBL", Unit: "mg/l", InputType: "select", SortOrder: 9, IsActive: true,
 			Values: valueOptions([]float64{0, 0.05, 0.1, 0.2, 0.5, 1})},
-		{Key: "no2", Label: "NO₂", Brand: "JBL", Unit: "mg/l", InputType: "select", SortOrder: 20, IsActive: false, Timers: timerSteps(300)},
-		{Key: "nh4", Label: "NH₄", Brand: "JBL", Unit: "mg/l", InputType: "select", SortOrder: 21, IsActive: false, Timers: timerSteps(900)},
-		{Key: "ph_74_90", Label: "pH 7,4–9,0", Brand: "JBL", Unit: "", InputType: "select", SortOrder: 22, IsActive: false, Timers: timerSteps(180)},
-		{Key: "ph_60_76", Label: "pH 6,0–7,6", Brand: "JBL", Unit: "", InputType: "select", SortOrder: 23, IsActive: false, Timers: timerSteps(180)},
-		{Key: "ph_30_100", Label: "pH 3,0–10,0", Brand: "JBL", Unit: "", InputType: "select", SortOrder: 24, IsActive: false, Timers: timerSteps(300)},
-		{Key: "mg", Label: "Mg", Brand: "JBL", Unit: "mg/l", InputType: "number", SortOrder: 25, IsActive: false, Timers: timerSteps(60)},
-		{Key: "o2", Label: "O₂", Brand: "JBL", Unit: "mg/l", InputType: "number", SortOrder: 26, IsActive: false, Timers: timerSteps(30, 600)},
-		{Key: "cu", Label: "Cu", Brand: "JBL", Unit: "mg/l", InputType: "number", SortOrder: 27, IsActive: false, Timers: timerSteps(900)},
-		{Key: "k", Label: "K", Brand: "JBL", Unit: "mg/l", InputType: "number", SortOrder: 28, IsActive: false, Timers: timerSteps(60)},
-		{Key: "fe", Label: "Fe", Brand: "JBL", Unit: "mg/l", InputType: "select", SortOrder: 29, IsActive: false, Timers: timerSteps(600)},
-		{Key: "sio2", Label: "SiO₂", Brand: "JBL", Unit: "mg/l", InputType: "number", SortOrder: 30, IsActive: false, Timers: timerSteps(180, 180, 180)},
+	}
+}
+
+func defaultJBLTimerGroups() []TimerGroup {
+	return []TimerGroup{
+		{TestKey: "no2", Label: "NO₂", FieldKey: "nitrite_no2", IsActive: true, SortOrder: 20, Steps: timerSteps(300)},
+		{TestKey: "nh4", Label: "NH₄", FieldKey: "ammonium_nh4", IsActive: true, SortOrder: 21, Steps: timerSteps(900)},
+		{TestKey: "ph_74_90", Label: "pH 7,4–9,0", IsActive: false, SortOrder: 22, Steps: timerSteps(180)},
+		{TestKey: "ph_60_76", Label: "pH 6,0–7,6", IsActive: false, SortOrder: 23, Steps: timerSteps(180)},
+		{TestKey: "ph_30_100", Label: "pH 3,0–10,0", IsActive: false, SortOrder: 24, Steps: timerSteps(300)},
+		{TestKey: "mg", Label: "Mg", IsActive: false, SortOrder: 25, Steps: timerSteps(60)},
+		{TestKey: "o2", Label: "O₂", FieldKey: "oxygen_mg_l", IsActive: false, SortOrder: 26, Steps: timerSteps(30, 600)},
+		{TestKey: "cu", Label: "Cu", IsActive: false, SortOrder: 27, Steps: timerSteps(900)},
+		{TestKey: "k", Label: "K", IsActive: false, SortOrder: 28, Steps: timerSteps(60)},
+		{TestKey: "fe", Label: "Fe", FieldKey: "iron_fe", IsActive: true, SortOrder: 29, Steps: timerSteps(600)},
+		{TestKey: "sio2", Label: "SiO₂", IsActive: false, SortOrder: 30, Steps: timerSteps(180, 180, 180)},
 	}
 }
 

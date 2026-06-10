@@ -102,18 +102,24 @@ export const MOCK_WATER_TEST_CONFIG: WaterTestConfigResponse = {
       test_key: "no2",
       label: "NO₂",
       field_key: "nitrite_no2",
+      is_active: true,
+      sort_order: 1,
       steps: [{ step_id: "no2", label: "Einwirkzeit", duration_seconds: 300 }],
     },
     nh4: {
       test_key: "nh4",
       label: "NH₄",
       field_key: "ammonium_nh4",
+      is_active: true,
+      sort_order: 2,
       steps: [{ step_id: "nh4", label: "Einwirkzeit", duration_seconds: 900 }],
     },
     o2: {
       test_key: "o2",
       label: "O₂",
       field_key: "oxygen_mg_l",
+      is_active: true,
+      sort_order: 3,
       steps: [
         { step_id: "o2_step1", label: "Schritt 1", duration_seconds: 30 },
         { step_id: "o2_step2", label: "Schritt 2", duration_seconds: 600 },
@@ -123,6 +129,8 @@ export const MOCK_WATER_TEST_CONFIG: WaterTestConfigResponse = {
       test_key: "sio2",
       label: "SiO₂",
       field_key: "silicate_sio2",
+      is_active: true,
+      sort_order: 4,
       steps: [
         { step_id: "sio2_step1", label: "Schritt 1", duration_seconds: 180 },
         { step_id: "sio2_step2", label: "Schritt 2", duration_seconds: 180 },
@@ -133,12 +141,18 @@ export const MOCK_WATER_TEST_CONFIG: WaterTestConfigResponse = {
       test_key: "fe",
       label: "Fe",
       field_key: "iron_fe",
+      is_active: true,
+      sort_order: 5,
       steps: [{ step_id: "fe", label: "Einwirkzeit", duration_seconds: 600 }],
     },
     ph_74_90: {
       test_key: "ph_74_90",
       label: "pH 7,4–9,0",
+      is_active: false,
+      sort_order: 6,
       steps: [{ step_id: "ph_74_90", label: "Einwirkzeit", duration_seconds: 180 }],
     },
   },
 };
+
+MOCK_WATER_TEST_CONFIG.timer_groups = Object.values(MOCK_WATER_TEST_CONFIG.timers);

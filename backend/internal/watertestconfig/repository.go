@@ -79,7 +79,8 @@ func (r *Repository) getDetail(ctx context.Context, id int64) (ConfigVersionDeta
 	if err := r.loadThresholds(ctx, id, byID); err != nil {
 		return ConfigVersionDetail{}, err
 	}
-	if err := r.loadTimers(ctx, id, byID); err != nil {
+	timerGroups, err := r.loadTimerGroups(ctx, id)
+	if err != nil {
 		return ConfigVersionDetail{}, err
 	}
 
@@ -88,20 +89,16 @@ func (r *Repository) getDetail(ctx context.Context, id int64) (ConfigVersionDeta
 		Tests:         tests,
 		Thresholds:    map[string]ThresholdGroup{},
 		Timers:        map[string]TimerGroup{},
+		TimerGroups:   timerGroups,
 	}
 	for i := range detail.Tests {
 		t := detail.Tests[i]
 		if len(t.Thresholds) > 0 {
 			detail.Thresholds[t.Key] = ThresholdGroup{Unit: t.Unit, Ranges: t.Thresholds}
 		}
-		if len(t.Timers) > 0 {
-			detail.Timers[t.Key] = TimerGroup{
-				TestKey:  t.Key,
-				Label:    t.Label,
-				FieldKey: fieldKeyForTimer(t.Key),
-				Steps:    t.Timers,
-			}
-		}
+	}
+	for _, group := range timerGroups {
+		detail.Timers[group.TestKey] = group
 	}
 	return detail, nil
 }
@@ -272,6 +269,64 @@ ORDER BY step_order, id`, versionID)
 		}
 	}
 	return rows.Err()
+}
+
+func (r *Repository) loadTimerGroups(ctx context.Context, versionID int64) ([]TimerGroup, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT id, timer_key, label, COALESCE(field_key, ''), is_active, sort_order
+FROM water_test_timer_groups
+WHERE config_version_id = ?
+ORDER BY sort_order, id`, versionID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var groups []TimerGroup
+	byID := map[int64]int{}
+	for rows.Next() {
+		var group TimerGroup
+		if err := rows.Scan(&group.ID, &group.TestKey, &group.Label, &group.FieldKey, &group.IsActive, &group.SortOrder); err != nil {
+			return nil, err
+		}
+		group.Steps = []TimerStep{}
+		groups = append(groups, group)
+		byID[group.ID] = len(groups) - 1
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+
+	stepRows, err := r.db.QueryContext(ctx, `
+SELECT s.id, s.timer_group_id, s.step_label, s.duration_seconds, s.step_order, g.timer_key
+FROM water_test_timer_steps s
+JOIN water_test_timer_groups g ON g.id = s.timer_group_id
+WHERE g.config_version_id = ?
+ORDER BY g.sort_order, s.step_order, s.id`, versionID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = stepRows.Close() }()
+	for stepRows.Next() {
+		var groupID int64
+		var groupKey string
+		var step TimerStep
+		if err := stepRows.Scan(&step.ID, &groupID, &step.StepLabel, &step.DurationSeconds, &step.StepOrder, &groupKey); err != nil {
+			return nil, err
+		}
+		step.Label = step.StepLabel
+		step.StepID = fmt.Sprintf("%s_step%d", groupKey, step.StepOrder+1)
+		if index, ok := byID[groupID]; ok {
+			if len(groups[index].Steps) == 0 {
+				step.StepID = groupKey
+			}
+			groups[index].Steps = append(groups[index].Steps, step)
+		}
+	}
+	return groups, stepRows.Err()
 }
 
 func scanVersion(scan func(dest ...any) error) (ConfigVersion, error) {

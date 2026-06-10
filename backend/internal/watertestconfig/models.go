@@ -14,9 +14,10 @@ type ConfigVersion struct {
 
 type ConfigVersionDetail struct {
 	ConfigVersion
-	Tests      []TestConfig              `json:"tests"`
-	Thresholds map[string]ThresholdGroup `json:"thresholds"`
-	Timers     map[string]TimerGroup     `json:"timers"`
+	Tests       []TestConfig              `json:"tests"`
+	Thresholds  map[string]ThresholdGroup `json:"thresholds"`
+	Timers      map[string]TimerGroup     `json:"timers"`
+	TimerGroups []TimerGroup              `json:"timer_groups"`
 }
 
 type TestConfig struct {
@@ -60,10 +61,13 @@ type Threshold struct {
 }
 
 type TimerGroup struct {
-	TestKey  string      `json:"test_key"`
-	Label    string      `json:"label"`
-	FieldKey string      `json:"field_key,omitempty"`
-	Steps    []TimerStep `json:"steps"`
+	ID        int64       `json:"id,omitempty"`
+	TestKey   string      `json:"test_key"`
+	Label     string      `json:"label"`
+	FieldKey  string      `json:"field_key,omitempty"`
+	IsActive  bool        `json:"is_active"`
+	SortOrder int         `json:"sort_order"`
+	Steps     []TimerStep `json:"steps"`
 }
 
 type TimerStep struct {
@@ -79,6 +83,7 @@ type ConfigUpdatePayload struct {
 	Name        *string      `json:"name,omitempty"`
 	Description *string      `json:"description,omitempty"`
 	Tests       []TestConfig `json:"tests"`
+	TimerGroups []TimerGroup `json:"timer_groups,omitempty"`
 }
 
 type ValidationIssue struct {
